@@ -724,10 +724,6 @@ safe_on_render_menu(function()
             end
         end
 
-        if menu.menu_elements.hold_position_combat then
-            menu.menu_elements.hold_position_combat:render("Hold position in Combo/Clear", "")
-        end
-
         if menu.menu_elements.tb_core_no_orbwalker == nil then
             menu.menu_elements.tb_core_no_orbwalker = checkbox:new(true, safe_get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "tb_core_no_orbwalker"))
         end
@@ -1343,15 +1339,19 @@ safe_on_update(function()
         -- Continue with combat rotation for objective.fight
     end
 
-    -- Option B: gate casting by Hold position in Combo/Clear instead of movement.
-    -- If hold_position_combat is enabled, only run the combat rotation when
-    -- orbwalker mode is PvP or Clear; otherwise skip this frame.
-    -- TB Leveling profile (index 5) is exempt so it can auto-cast independently of orbwalker.
+    -- S11: Enable rotation when orbwalker is in Clear or Combo mode
+    -- This ensures the rotation runs during active combat phases
+    -- Poison Twisting Blades profile (index 5) can auto-cast independently of orbwalker
     local profile_index_hold = safe_get_menu_element(menu.menu_elements.profile, 0)
-    if profile_index_hold ~= 5 and menu.menu_elements.hold_position_combat and safe_get_menu_element(menu.menu_elements.hold_position_combat, false) then
+    if profile_index_hold ~= 5 then
         local current_orb_mode = safe_orbwalker_get_orb_mode()
-        if not (orb_mode and (current_orb_mode == orb_mode.pvp or current_orb_mode == orb_mode.clear)) then
-            return
+        -- Only run rotation when orbwalker is in clear/combo mode (active combat)
+        if orb_mode and current_orb_mode then
+            -- orb_mode.clear is for clearing/farming, orb_mode.combo is typically the same
+            -- orb_mode.pvp is for player vs player
+            if not (current_orb_mode == orb_mode.clear or current_orb_mode == orb_mode.pvp) then
+                return
+            end
         end
     end
 

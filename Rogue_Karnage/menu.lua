@@ -62,7 +62,6 @@ local menu_elements =
     position_optimization = checkbox:new(false, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "position_optimization")),
     enhanced_debug_viz = checkbox:new(false, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "enhanced_debug_viz")),
     disable_auto_movement = checkbox:new(false, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "disable_auto_movement")),
-    hold_position_combat = checkbox:new(false, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "hold_position_combat")),
     
     -- Enhanced targeting options
     enhanced_targeting_tree = tree_node:new(2),
