@@ -15,79 +15,202 @@ local function safe_get_menu_element(element, fallback)
 end
 
 -- Returns the active spell priority list based on selected profile
+-- S11 Build Profiles with AOE and Boss mode optimization
 local function get_active_spell_priority()
-    -- Profile: 0 = Penetrating Shot (default), 1 = Death Trap PIT (replaces Heartseeker [Starter] slot), 2 = Flurry Shadow Imbuement Pit, 3 = Heartseeker Pit Hybrid
+    -- Profile: 0 = Death Trap, 1 = Dance of Knives, 2 = Heartseeker, 3 = Flurry, 4 = Rain of Arrows, 5 = Poison Twisting Blades
     local profile_index = safe_get_menu_element(menu.menu_elements.profile, 0)
+    local rotation_mode = safe_get_menu_element(menu.menu_elements.rotation_mode, 0) -- 0=Auto, 1=AOE, 2=Boss
 
-    if profile_index == 1 then
-        -- Death Trap PIT profile (mapped onto the "Heartseeker [Starter]" UI slot)
-        -- User bar: 1=poison_trap, 2=concealment, 3=dark_shroud, 4=dash, LM=death_trap, RM=shadow_step
-        -- Priority: maintain Dark Shroud -> Shadow Imbuement + Concealment + Death Trap burst -> Poison Trap AoE -> Shadow Step/Dash movement.
-        return {
-            "dark_shroud",   -- keep DR up before going in
-            "shadow_imbuement", -- prep Death Trap and traps with imbuement
-            "concealment",   -- stealth burst before dropping Death Trap
-            "death_trap",    -- main nuke on packs/bosses
-            "poison_trap",   -- extra AoE damage/control around Death Trap
-            "shadow_step",   -- engage / close gaps on priority targets
-            "dash",          -- generic movement / repositioning
-        }
+    -- Determine if we should use AOE or Boss priority
+    local use_aoe_priority = false
+    local use_boss_priority = false
+    
+    if rotation_mode == 1 then
+        use_aoe_priority = true
+    elseif rotation_mode == 2 then
+        use_boss_priority = true
+    else
+        -- Auto mode: determine based on enemy density
+        local player_position = safe_get_player_position()
+        if player_position then
+            local all_units_count, normal_units_count, elite_units_count, champion_units_count, boss_units_count = 
+                my_utility.enemy_count_in_range(12.0, player_position)
+            
+            -- Use boss priority if there's a boss/champion or 1-2 elites
+            if (boss_units_count and boss_units_count > 0) or 
+               (champion_units_count and champion_units_count > 0) or
+               (elite_units_count and elite_units_count > 0 and all_units_count <= 4) then
+                use_boss_priority = true
+            -- Use AOE priority for large packs
+            elseif all_units_count and all_units_count >= 5 then
+                use_aoe_priority = true
+            else
+                -- Default to balanced (use boss priority for safety)
+                use_boss_priority = true
+            end
+        end
+    end
+
+    if profile_index == 0 then
+        -- S11 Death Trap Build
+        if use_aoe_priority then
+            -- AOE: Focus on trap setup and quick burst
+            return {
+                "concealment",       -- quick stealth setup
+                "shadow_imbuement",  -- amplify traps
+                "death_trap",        -- primary AOE nuke
+                "poison_trap",       -- layered AOE damage
+                "caltrop",           -- vulnerable/control
+                "shadow_step",       -- mobility
+                "dash",              -- reposition
+            }
+        else
+            -- Boss: More controlled, defensive setup
+            return {
+                "dark_shroud",       -- defensive layer before engaging
+                "concealment",       -- stealth burst window
+                "shadow_imbuement",  -- amplify trap damage
+                "death_trap",        -- primary nuke
+                "poison_trap",       -- sustained damage
+                "caltrop",           -- vulnerable setup
+                "shadow_step",       -- engage
+                "dash",              -- reposition
+            }
+        end
+    elseif profile_index == 1 then
+        -- S11 Dance of Knives Build
+        if use_aoe_priority then
+            -- AOE: Quick channel on packs
+            return {
+                "poison_imbuement",  -- amplify Dance
+                "dance_of_knives",   -- primary AOE channel
+                "poison_trap",       -- area damage
+                "caltrop",           -- control
+                "dash",              -- mobility
+            }
+        else
+            -- Boss: Longer channels with defensive setup
+            return {
+                "concealment",       -- defensive + damage buff
+                "poison_imbuement",  -- amplify Dance
+                "dance_of_knives",   -- primary damage
+                "poison_trap",       -- sustained damage
+                "caltrop",           -- kiting
+                "dash",              -- mobility
+            }
+        end
     elseif profile_index == 2 then
-        -- Heartseeker-standard-PIT profile (balanced boss + trash)
-        -- Priority: setup/CC -> imbuement -> Shadow Clone (boss/elite burst) -> Heartseeker core ST -> Flurry secondary -> mobility -> fallback
-        return {
-            "caltrop",           -- Vulnerable + Control setup
-            "smoke_grenade",     -- Extra control/DR on elites/bosses
-            "poison_trap",       -- Additional area control / damage where equipped
-            "shadow_imbuement",  -- Always prep Flurry with imbuement when possible
-            "shadow_clone",      -- Boss/elite burst multiplier, synced with imbuement
-            "heartseeker",       -- Primary single-target core for this pit build
-            "flurry",            -- Secondary melee AoE / cleanup when in range
-            "dash",              -- Gap-close / dodge; allowed even with auto movement disabled
-            "shadow_step",       -- Extra mobility + combo where enabled
-            "penetrating_shot",  -- Fallback spender if equipped
-        }
+        -- S11 Heartseeker Build
+        if use_aoe_priority then
+            -- AOE: Barrage spam with setup
+            return {
+                "caltrop",           -- vulnerable
+                "poison_trap",       -- area damage
+                "shadow_imbuement",  -- damage boost
+                "barrage",           -- AOE core
+                "heartseeker",       -- filler
+                "dash",              -- mobility
+            }
+        else
+            -- Boss: Heartseeker spam with burst windows
+            return {
+                "dark_shroud",       -- defense
+                "smoke_grenade",     -- damage amp
+                "shadow_imbuement",  -- damage boost
+                "shadow_clone",      -- burst window
+                "heartseeker",       -- primary spam
+                "flurry",            -- close range
+                "dash",              -- mobility
+                "shadow_step",       -- engage
+            }
+        end
     elseif profile_index == 3 then
-        -- Heartseeker Pit Hybrid profile
-        -- Boss/elite prio: dark_shroud -> caltrop -> smoke_grenade -> shadow_clone -> barrage -> heartseeker
-        -- Trash prio: dark_shroud -> caltrop -> smoke_grenade -> shadow_clone (on big packs) -> barrage -> heartseeker
-        -- The main loop and boss/aoe mode flags control when these are allowed; this list encodes relative spell priority.
-        return {
-            "dark_shroud",   -- keep DR up before going in
-            "caltrop",       -- ground control / damage zone first in packs
-            "poison_trap",   -- poison trap for extra AoE and boss damage in the hybrid profile
-            "smoke_grenade", -- CC + damage amp once enemies are in caltrops
-            "shadow_clone",  -- burst window once setup is in place
-            "barrage",       -- core spender for AoE/boss damage in hybrid profile
-            "heartseeker",   -- default filler / main damage
-        }
+        -- S11 Flurry Build
+        if use_aoe_priority then
+            -- AOE: Flurry spam with imbuement
+            return {
+                "shadow_imbuement",  -- damage multiplier
+                "poison_trap",       -- area damage
+                "flurry",            -- primary spam
+                "dash",              -- mobility
+            }
+        else
+            -- Boss: Controlled Flurry with burst
+            return {
+                "dark_shroud",       -- defense
+                "smoke_grenade",     -- boss damage
+                "shadow_imbuement",  -- damage multiplier
+                "shadow_clone",      -- burst
+                "caltrop",           -- vulnerable
+                "flurry",            -- primary spam
+                "dash",              -- mobility
+                "shadow_step",       -- engage
+            }
+        end
     elseif profile_index == 4 then
-        return {
-            "dance_of_knives",
-            "concealment",
-            "poison_imbuement",
-            "poison_trap",
-            "caltrop",
-            "dash",
-        }
+        -- S11 Rain of Arrows Build
+        if use_aoe_priority then
+            -- AOE: Rain spam for pack clear
+            return {
+                "caltrop",           -- vulnerable
+                "shadow_imbuement",  -- damage boost
+                "rain_of_arrows",    -- primary AOE
+                "barrage",           -- secondary AOE
+                "dash",              -- mobility
+            }
+        else
+            -- Boss: Rain with burst windows
+            return {
+                "dark_shroud",       -- defense
+                "smoke_grenade",     -- damage amp
+                "poison_trap",       -- control
+                "shadow_imbuement",  -- damage boost
+                "shadow_clone",      -- burst
+                "rain_of_arrows",    -- primary AOE
+                "barrage",           -- secondary
+                "heartseeker",       -- filler
+                "dash",              -- mobility
+            }
+        end
     elseif profile_index == 5 then
-        -- TB Leveling profile (Pit push variant uses Concealment + Poison Imbue + Death Trap + Poison Trap)
-        return {
-            "concealment",        -- stealth / unstoppable opener for pit push
-            "poison_imbuement",   -- poison imbuement for TB leveling / pit burst
-            "shadow_imbuement",   -- optional shadow imbuement support
-            "death_trap",         -- pit burst nuke
-            "poison_trap",        -- layered poison trap under packs / elites
-            "twisting_blade",     -- main spender
-            "blade_shift",        -- basic
-            "puncture",           -- alt basic (if you ever swap)
-            "shadow_step",        -- mobility / engage
-            "dash",               -- extra mobility
-        }
+        -- S11 Poison Twisting Blades Build
+        if use_aoe_priority then
+            -- AOE: Quick poison setup and TB spam
+            return {
+                "poison_imbuement",   -- poison synergy
+                "death_trap",         -- burst setup
+                "poison_trap",        -- layered poison
+                "twisting_blade",     -- primary spam
+                "dash",               -- mobility
+                "shadow_step",        -- engage
+            }
+        else
+            -- Boss: Controlled poison build-up
+            return {
+                "concealment",        -- stealth opener
+                "poison_imbuement",   -- poison synergy
+                "shadow_imbuement",   -- shadow support
+                "death_trap",         -- burst
+                "poison_trap",        -- sustained damage
+                "twisting_blade",     -- primary damage
+                "blade_shift",        -- basic
+                "shadow_step",        -- mobility
+                "dash",               -- reposition
+            }
+        end
     end  
       
-    -- Default Penetrating Shot profile (from spell_priority.lua)
-    return spell_priority_default
+    -- Default to Death Trap Boss profile if something goes wrong
+    return {
+        "dark_shroud",
+        "concealment",
+        "shadow_imbuement",
+        "death_trap",
+        "poison_trap",
+        "caltrop",
+        "shadow_step",
+        "dash",
+    }
 end
 
 -- Simple build configuration, used to specialize behavior for certain profiles
@@ -507,24 +630,13 @@ safe_on_render_menu(function()
     local options = {"Melee", "Ranged"}
     menu.menu_elements.mode:render("Mode", options, "")
 
-    local profile_options = {"Penetrating Shot", "Death Trap", "Heartseeker-standard-PIT", "Heartseeker Pit Hybrid", "Dance of Knives PIT", "TB Leveling"}
+    local profile_options = {"Death Trap", "Dance of Knives", "Heartseeker", "Flurry", "Rain of Arrows", "Poison Twisting Blades"}
     menu.menu_elements.profile:render("Profile", profile_options, "")
     menu.menu_elements.evade_cooldown:render("Evade Cooldown", "")
 
-    -- Only show Boss Mode and Slow Penetrating Shot options for the Penetrating Shot profile (index 0)
-    local current_profile_index = safe_get_menu_element(menu.menu_elements.profile, 0)
-    if current_profile_index == 0 then
-        menu.menu_elements.boss_mode:render("Boss Mode", menu.boss_mode_description)
-        menu.menu_elements.slow_penetrating_shot:render("Slow Penetrating Shot", menu.slow_penetrating_shot_description)
-        if safe_get_menu_element(menu.menu_elements.slow_penetrating_shot, false) then
-            menu.menu_elements.slow_penetrating_shot_delay:render("Penetrating Shot Delay", menu.slow_penetrating_shot_delay_description, 3)
-        end
-    end
-
-    -- Only show Pit push option for the TB Leveling profile (index 5)
-    if current_profile_index == 5 then
-        menu.menu_elements.pit_push:render("Pit push", menu.pit_push_description)
-    end
+    -- AOE/Boss Mode toggle for optimized rotations
+    menu.menu_elements.rotation_mode:render("Rotation Mode", {"Auto", "AOE Priority", "Boss Priority"}, 
+        "Auto: Adapts based on enemy density\nAOE Priority: Optimizes for trash packs\nBoss Priority: Optimizes for single target/elites/bosses")
 
     -- Global Helltide/NMD mode (available for all profiles)
     menu.menu_elements.helltide_nmd:render("Helltide-NMD", menu.helltide_nmd_description)
@@ -1322,112 +1434,6 @@ safe_on_update(function()
         end
     end
 
-    -- Check if boss mode is enabled
-    local boss_mode_enabled = safe_get_menu_element(menu.menu_elements.boss_mode, false)
-    do
-        local profile_index_bossmode = safe_get_menu_element(menu.menu_elements.profile, 0)
-        if profile_index_bossmode ~= 0 then
-            boss_mode_enabled = false
-        end
-    end
-    
-    -- Boss Mode: Skip normal rotation and spam all spells aggressively
-    if boss_mode_enabled then
-        -- Boss Mode: Cast buffs immediately when there's an enemy to attack
-        if target_list and #target_list > 0 then
-            -- Add a delay to prevent spam in boss mode
-            local last_boss_buff_check = _G.last_boss_buff_check or 0
-            if current_time - last_boss_buff_check >= 0.5 then -- Check every 500ms instead of every frame
-                _G.last_boss_buff_check = current_time
-                
-                -- In boss mode, cast buffs for any enemy encounter, not just bosses/champions
-                local buff_casted, buff_spell = boss_buff_manager.process_boss_buff_rotation(target_list, target_selector_data_all, best_target, true)
-                if buff_casted then
-                    cast_end_time = current_time + 0.1 -- Fast buff casting in boss mode
-                    console.print("Boss mode: Cast " .. buff_spell .. " buff immediately")
-                    return -- Exit after casting buff to prioritize buffs
-                end
-            end
-        end
-        
-        -- Cast penetrating shot as rapidly as possible (hold button behavior)
-        local spell = spells["penetrating_shot"]
-        if spell and spell.logics and utility.is_spell_ready(377137) and 
-           (not spell.menu_elements or spell.menu_elements.main_boolean:get()) then
-            local result = spell.logics(target_list, target_selector_data_all, best_target)
-            if result then
-                cast_end_time = current_time + 0.01 -- Minimal delay for rapid casting
-            end
-        end
-        
-        -- Boss Mode: Prioritize area control spells (smoke grenade, poison trap, caltrops)
-        local boss_area_spells = {"smoke_grenade", "poison_trap", "caltrop"}
-        for _, spell_name in ipairs(boss_area_spells) do
-            local spell = spells[spell_name]
-            if not spell or not spell.logics then goto continue_boss_area end
-            if spell.menu_elements and not spell.menu_elements.main_boolean:get() then goto continue_boss_area end
-            
-            -- Check if spell is ready and affordable
-            local spell_id = nil
-            if spell_name == "poison_trap" then spell_id = 416528
-            elseif spell_name == "smoke_grenade" then spell_id = 356162
-            elseif spell_name == "caltrop" then spell_id = 389667
-            end
-            
-            if spell_id and utility.is_spell_ready(spell_id) and utility.is_spell_affordable(spell_id) then
-                local result = spell.logics(target_list, target_selector_data_all, best_target)
-                if result then
-                    cast_end_time = current_time + 0.05 -- Faster casting in boss mode
-                    console.print("Boss mode: Cast " .. spell_name .. " successfully")
-                    break -- Cast one area spell per frame
-                end
-            end
-            ::continue_boss_area::
-        end
-        
-        -- Spam all other damage spells off cooldown
-        local active_spell_priority = get_active_spell_priority()
-        for _, spell_name in ipairs(active_spell_priority) do
-            if spell_name ~= "penetrating_shot" and spell_name ~= "smoke_grenade" and spell_name ~= "poison_trap" and spell_name ~= "caltrop" then
-                local spell = spells[spell_name]
-                if not spell or not spell.logics then goto continue_boss end
-                if spell.menu_elements and not spell.menu_elements.main_boolean:get() then goto continue_boss end
-                
-                -- Check if spell is ready and affordable
-                local spell_id = nil
-                if spell_name == "shadow_clone" then spell_id = 357628
-                elseif spell_name == "shadow_imbuement" then spell_id = 380288
-                elseif spell_name == "dash" then spell_id = 358761
-                elseif spell_name == "shadow_step" then spell_id = 355606
-                elseif spell_name == "dark_shroud" then spell_id = 786381
-                end
-                
-                if spell_id and utility.is_spell_ready(spell_id) and utility.is_spell_affordable(spell_id) then
-                    local result = false
-                    
-                    -- Cast based on spell type
-                    if spell_name == "shadow_clone" then
-                        result = spell.logics()
-                    elseif spell_name == "shadow_imbuement" or spell_name == "dark_shroud" then
-                        result = spell.logics()
-                    elseif spell_name == "dash" or spell_name == "shadow_step" then
-                        result = spell.logics(best_target)
-                    else
-                        result = spell.logics(best_target)
-                    end
-                    
-                    if result then
-                        cast_end_time = current_time + 0.05 -- Faster casting in boss mode
-                        console.print("Boss mode: Cast " .. spell_name .. " successfully")
-                        break -- Only cast one spell per frame in boss mode
-                    end
-                end
-            end
-            ::continue_boss::
-        end
-        return -- Exit early in boss mode
-    end
-    
     -- Normal Mode: Main spell rotation with prioritization
     -- Check if we're fighting a boss (like Belial) and enable aggressive mode
     local is_boss_fight = false
@@ -1597,170 +1603,20 @@ safe_on_update(function()
         end
     end
     
-    local profile_index_rotation = safe_get_menu_element(menu.menu_elements.profile, 0)
-    if profile_index_rotation == 1 then
-        local dark_shroud_spell = spells["dark_shroud"]
-        if dark_shroud_spell and dark_shroud_spell.logics and (not dark_shroud_spell.menu_elements or dark_shroud_spell.menu_elements.main_boolean:get()) then
-            if dark_shroud_spell.logics() then
-                cast_end_time = current_time + 0.2
-                return
-            end
-        end
-
-        local concealment_spell = spells["concealment"]
-        if concealment_spell and concealment_spell.logics and (not concealment_spell.menu_elements or concealment_spell.menu_elements.main_boolean:get()) then
-            if concealment_spell.logics() then
-                cast_end_time = current_time + 0.2
-                return
-            end
-        end
-
-        local death_trap_spell = spells["death_trap"]
-        if death_trap_spell and death_trap_spell.logics and (not death_trap_spell.menu_elements or death_trap_spell.menu_elements.main_boolean:get()) then
-            if death_trap_spell.logics(target_list, target_selector_data_all, best_target) then
-                cast_end_time = current_time + 0.4
-                _G.last_death_trap_time = current_time
-                return
-            end
-        end
-
-        if is_boss_fight then
-            local shadow_step_spell = spells["shadow_step"]
-            if false and shadow_step_spell and shadow_step_spell.logics and (not shadow_step_spell.menu_elements or shadow_step_spell.menu_elements.main_boolean:get()) then
-                if not is_movement_disabled() then
-                    if shadow_step_spell.logics(target_list, target_selector_data_all, best_target, closest_target) then
-                        _G.last_shadow_step_time = current_time
-                        cast_end_time = current_time + 0.2
-                        return
-                    end
-                end
-            end
-
-            local heartseeker_spell = spells["heartseeker"]
-            if heartseeker_spell and heartseeker_spell.logics then
-                local hs_target = best_target or closest_target
-                if hs_target and hs_target:is_enemy() then
-                    if heartseeker_spell.logics(hs_target) then
-                        _G.last_heartseeker_cast_time = current_time
-                        cast_end_time = current_time + 0.2
-                        return
-                    end
-                end
-            end
-        else
-            local player_position_rot = safe_get_player_position()
-            local enemy_count_all = 0
-            do
-                local all_units_count = 0
-                all_units_count = select(1, my_utility.enemy_count_in_range(6.0, player_position_rot))
-                enemy_count_all = all_units_count or 0
-            end
-
-            if enemy_count_all >= 3 then
-                local poison_trap_spell = spells["poison_trap"]
-                if poison_trap_spell and poison_trap_spell.logics and (not poison_trap_spell.menu_elements or poison_trap_spell.menu_elements.main_boolean:get()) then
-                    if poison_trap_spell.logics(target_list, target_selector_data_all, best_target) then
-                        _G.last_poison_trap_time = current_time
-                        cast_end_time = current_time + 0.3
-                        return
-                    end
-                end
-
-                local flurry_spell = spells["flurry"]
-                if flurry_spell and flurry_spell.logics and (not flurry_spell.menu_elements or flurry_spell.menu_elements.main_boolean:get()) then
-                    local fl_target = best_target or closest_target
-                    if fl_target and fl_target:is_enemy() then
-                        if flurry_spell.logics(fl_target) then
-                            cast_end_time = current_time + 0.3
-                            return
-                        end
-                    end
-                end
-            end
+    -- S11 Builds: Process boss buff rotation for boss/elite encounters
+    if (is_boss_fight or boss_buff_manager.is_boss_encounter(target_list, best_target)) then
+        local buff_casted, buff_spell = boss_buff_manager.process_boss_buff_rotation(target_list, target_selector_data_all, best_target, false)
+        if buff_casted then
+            cast_end_time = current_time + 0.3
+            console.print("Boss Buff Manager: Cast " .. buff_spell .. " for buff effect")
+            return -- Exit after casting buff spell to prioritize buffs
         end
     end
 
-    -- Meta Build Spell Rotation Implementation
-    -- For the Death Trap profile, optionally skip heavy spells on a single normal enemy
-    local skip_heavy_for_single_normal = false
-    do
-        local profile_index_single = safe_get_menu_element(menu.menu_elements.profile, 0)
-        if profile_index_single == 1 and player_position then
-            local all_units_count, normal_units_count, elite_units_count, champion_units_count, boss_units_count =
-                my_utility.enemy_count_in_range(12.0, player_position)
-            local high_value_present = (elite_units_count or 0) > 0 or (champion_units_count or 0) > 0 or (boss_units_count or 0) > 0
-            if not high_value_present and (all_units_count or 0) <= 1 then
-                skip_heavy_for_single_normal = true
-            end
-        end
-    end
-
-    -- TB Leveling Pit push: elite / big-pack burst sequence using the user's pit bar
-    do
-        local profile_index_pit = safe_get_menu_element(menu.menu_elements.profile, 0)
-        local pit_push_enabled = (profile_index_pit == 5) and safe_get_menu_element(menu.menu_elements.pit_push, false)
-        if pit_push_enabled and best_target and best_target.is_enemy and best_target:is_enemy() then
-            local target_position = best_target:get_position()
-            local ok_counts, all_units_count, normal_units_count, elite_units_count, champion_units_count, boss_units_count = pcall(function()
-                return my_utility.enemy_count_in_range(8.0, target_position)
-            end)
-            if ok_counts then
-                local high_value_present = (elite_units_count or 0) > 0 or (champion_units_count or 0) > 0 or (boss_units_count or 0) > 0
-                local dense_pack = (all_units_count or 0) >= 3
-                if high_value_present or dense_pack then
-                    -- 1) Concealment opener for unstoppable / crit burst
-                    do
-                        local concealment_spell = spells["concealment"]
-                        if concealment_spell and concealment_spell.logics and (not concealment_spell.menu_elements or concealment_spell.menu_elements.main_boolean:get()) then
-                            if concealment_spell.logics() then
-                                cast_end_time = current_time + 0.2
-                                return
-                            end
-                        end
-                    end
-
-                    -- 2) Poison Imbuement before committing Death Trap / TB
-                    do
-                        local poison_imb_spell = spells["poison_imbuement"]
-                        if poison_imb_spell and poison_imb_spell.logics and (not poison_imb_spell.menu_elements or poison_imb_spell.menu_elements.main_boolean:get()) then
-                            if poison_imb_spell.logics() then
-                                cast_end_time = current_time + 0.2
-                                return
-                            end
-                        end
-                    end
-
-                    -- 3) Death Trap on the elite / best pack center
-                    do
-                        local death_trap_spell = spells["death_trap"]
-                        if death_trap_spell and death_trap_spell.logics and (not death_trap_spell.menu_elements or death_trap_spell.menu_elements.main_boolean:get()) then
-                            if death_trap_spell.logics(target_list, target_selector_data_all, best_target) then
-                                _G.last_death_trap_time = current_time
-                                cast_end_time = current_time + 0.4
-                                return
-                            end
-                        end
-                    end
-
-                    -- 4) Poison Trap layered under the same pack for extra damage / control
-                    do
-                        local poison_trap_spell = spells["poison_trap"]
-                        if poison_trap_spell and poison_trap_spell.logics and (not poison_trap_spell.menu_elements or poison_trap_spell.menu_elements.main_boolean:get()) then
-                            if poison_trap_spell.logics(target_list, target_selector_data_all, best_target) then
-                                _G.last_poison_trap_time = current_time
-                                cast_end_time = current_time + 0.3
-                                return
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-
+    -- S11 Main Spell Rotation based on active spell priority
     local active_spell_priority = get_active_spell_priority()
     local profile_index_rotation_meta = safe_get_menu_element(menu.menu_elements.profile, 0)
-    local is_dance_of_knives_profile = (profile_index_rotation_meta == 4)
+    local is_dance_of_knives_profile = (profile_index_rotation_meta == 1) -- Dance of Knives is profile 1 in S11
     local is_dance_channeling = false
     do
         local dok_spell = spells["dance_of_knives"]
@@ -1770,9 +1626,8 @@ safe_on_update(function()
     end
     local resource_percent = safe_get_resource_percent()
     local is_low_resource = resource_percent and resource_percent < 0.20 or false
-    for _, spell_name in ipairs(active_spell_priority) do
-        if spell_name == "penetrating_shot" or spell_name == "death_trap" then goto continue end -- Skip penetrating shot and death trap (handled separately)
-        
+    
+    for _, spell_name in ipairs(active_spell_priority) do        
         local spell = spells[spell_name]
         if not spell or not spell.logics then
             goto continue
@@ -1783,6 +1638,8 @@ safe_on_update(function()
             goto continue
         end
 
+        -- Dance of Knives: Only allow certain spells during channeling
+        -- Dance of Knives: Only allow certain spells during channeling
         if is_dance_channeling and is_dance_of_knives_profile then
             if spell_name ~= "concealment" and
                spell_name ~= "dash" and
@@ -1791,42 +1648,33 @@ safe_on_update(function()
                 goto continue
             end
         end
-
-        if skip_heavy_for_single_normal then
-            if spell_name == "caltrop" or
-               spell_name == "smoke_grenade" or
-               spell_name == "poison_trap" or
-               spell_name == "shadow_imbuement" or
-               spell_name == "shadow_clone" or
-               spell_name == "dash" or
-               spell_name == "shadow_step" then
+        
+        -- Dance of Knives: Smart casting logic
+        if is_dance_of_knives_profile then
+            -- Don't cast poison trap when low on resource
+            if is_low_resource and spell_name == "poison_trap" then
                 goto continue
             end
-        end
-        
-        -- Dance of Knives PIT: conditional casting and safety logic
-        if is_dance_of_knives_profile then
-            if is_low_resource then
-                if spell_name == "poison_trap" then
-                    goto continue
-                end
-            end
 
-            -- Concealment: only commit in boss/elite situations, not on pure trash packs
+            -- Concealment: only commit in boss/elite situations
             if spell_name == "concealment" and not is_boss_fight then
-                if player_position then
-                    local all_units_count_dok, normal_units_count_dok, elite_units_count_dok, champion_units_count_dok, boss_units_count_dok =
-                        my_utility.enemy_count_in_range(12.0, player_position)
-                    local has_high_value = (elite_units_count_dok or 0) > 0 or (champion_units_count_dok or 0) > 0 or (boss_units_count_dok or 0) > 0
-                    if not has_high_value then
+                local rotation_mode = safe_get_menu_element(menu.menu_elements.rotation_mode, 0)
+                -- In Boss Priority mode, always allow concealment
+                if rotation_mode ~= 2 then
+                    if player_position then
+                        local all_units_count_dok, normal_units_count_dok, elite_units_count_dok, champion_units_count_dok, boss_units_count_dok =
+                            my_utility.enemy_count_in_range(12.0, player_position)
+                        local has_high_value = (elite_units_count_dok or 0) > 0 or (champion_units_count_dok or 0) > 0 or (boss_units_count_dok or 0) > 0
+                        if not has_high_value then
+                            goto continue
+                        end
+                    else
                         goto continue
                     end
-                else
-                    goto continue
                 end
             end
 
-            -- Ensure Poison Imbuement is applied right before Dance of Knives when possible
+            -- Ensure Poison Imbuement is applied right before Dance of Knives
             if spell_name == "dance_of_knives" then
                 local poison_imb_spell = spells["poison_imbuement"]
                 local dok_target = best_target or closest_target
@@ -1848,87 +1696,54 @@ safe_on_update(function()
                     end
                 end
             end
-
-            -- Caltrops: only when kiting is actually needed or in high-density trash
-            if spell_name == "caltrop" then
-                local local_player_dok = safe_get_local_player()
-                local low_health = false
-                if local_player_dok and type(local_player_dok.get_health_percent) == "function" then
-                    low_health = local_player_dok:get_health_percent() < 0.75
-                end
-
-                local in_danger = false
-                if spells.evade and type(spells.evade.is_dangerous_position) == "function" and player_position then
-                    in_danger = spells.evade.is_dangerous_position(player_position)
-                end
-
-                local need_kite = low_health or in_danger or is_trash_aoe_mode
-                if not need_kite then
-                    goto continue
-                end
-            end
         end
 
-        -- Meta build timing: Shadow Clone every 5 seconds for damage doubling + Unstoppable
+        -- S11 Shadow Clone: 5 second interval for burst windows
         if spell_name == "shadow_clone" then
             local last_shadow_clone_time = _G.last_shadow_clone_time or 0
-            -- Default meta timing: every 5 seconds, but allow faster reuse in Pit trash AoE mode
             local shadow_clone_interval = 5.0
-            if is_pit_flurry_profile and is_trash_aoe_mode then
-                shadow_clone_interval = 3.0
-            end
 
             if current_time - last_shadow_clone_time < shadow_clone_interval then
-                if is_boss_fight then
-                    console.print("Shadow Clone: Meta build timing (" .. shadow_clone_interval .. "s) - " .. (shadow_clone_interval - (current_time - last_shadow_clone_time)) .. "s remaining")
-                end
                 goto continue
             end
         end
         
-        -- Meta build cooldown checks with improved messaging
+        -- S11 Cooldown checks to prevent spam
         if spell_name == "caltrop" and not caltrop_ready then
-            if is_boss_fight then console.print("Caltrops: Meta build damage multiplier on cooldown - " .. (caltrop_cooldown - (current_time - last_caltrop_time)) .. "s remaining") end
             goto continue
         elseif spell_name == "smoke_grenade" and not smoke_grenade_ready then
-            if is_boss_fight then console.print("Smoke Grenade: Meta build elite/boss damage on cooldown - " .. (smoke_grenade_cooldown - (current_time - last_smoke_grenade_time)) .. "s remaining") end
             goto continue
         elseif spell_name == "poison_trap" and not poison_trap_ready then
-            if is_boss_fight then console.print("Poison Trap: Meta build Pit Push variant on cooldown - " .. (poison_trap_cooldown - (current_time - last_poison_trap_time)) .. "s remaining") end
             goto continue
         elseif spell_name == "shadow_imbuement" and not shadow_imbuement_ready then
-            if is_boss_fight then console.print("Shadow Imbuement: Meta build damage multiplier on cooldown - " .. (shadow_imbuement_cooldown - (current_time - last_shadow_imbuement_time)) .. "s remaining") end
             goto continue
         elseif spell_name == "dash" and not dash_ready then
-            if is_boss_fight then console.print("Dash: Meta build mobility on cooldown - " .. (dash_cooldown - (current_time - last_dash_time)) .. "s remaining") end
             goto continue
         elseif spell_name == "shadow_step" and not shadow_step_ready then
-            if is_boss_fight then console.print("Shadow Step: Meta build mobility on cooldown - " .. (shadow_step_cooldown - (current_time - last_shadow_step_time)) .. "s remaining") end
             goto continue
         end
         
-        -- Different spell types have different parameter requirements
+        -- S11 Spell casting logic
         local result = false
         
-        -- Meta build spell casting logic
         if spell_name == "shadow_clone" then
             result = spell.logics()
             if result then
                 _G.last_shadow_clone_time = current_time
                 cast_end_time = current_time + 0.4
-                if is_boss_fight then console.print("Shadow Clone: Meta build damage doubling + Unstoppable active") end
+                console.print("Shadow Clone: Burst window active")
                 return
             end
         elseif spell_name == "shadow_imbuement" or 
                spell_name == "poison_imbuement" or 
                spell_name == "cold_imbuement" then
-            -- Meta build: Maintain imbuements for damage multipliers
+            -- Maintain imbuements for damage multipliers
             result = spell.logics()
             if result then
                 cast_end_time = current_time + 0.3
                 if spell_name == "shadow_imbuement" then
                     _G.last_shadow_imbuement_time = current_time
-                    if is_boss_fight then console.print("Shadow Imbuement: Meta build Pit Push variant active") end
+                    console.print("Shadow Imbuement: Active")
                 end
                 return
             end
@@ -1941,18 +1756,18 @@ safe_on_update(function()
                 cast_end_time = current_time + 0.3
                 if spell_name == "caltrop" then
                     _G.last_caltrop_time = current_time
-                    if is_boss_fight then console.print("Caltrops: Meta build damage multiplier deployed") end
+                    console.print("Caltrops: Deployed")
                 elseif spell_name == "smoke_grenade" then
                     _G.last_smoke_grenade_time = current_time
-                    if is_boss_fight then console.print("Smoke Grenade: Meta build elite/boss damage deployed") end
+                    console.print("Smoke Grenade: Deployed")
                 elseif spell_name == "poison_trap" then
                     _G.last_poison_trap_time = current_time
-                    if is_boss_fight then console.print("Poison Trap: Meta build Pit Push variant deployed") end
+                    console.print("Poison Trap: Deployed")
                 end
                 return
             end
         elseif spell_name == "dash" or spell_name == "shadow_step" then
-            -- Meta build: Mobility spells for positioning and Momentum
+            -- Mobility spells
             local move_target = best_target or closest_target
             if not move_target or not move_target.is_enemy or not move_target:is_enemy() then
                 goto continue
@@ -1965,7 +1780,7 @@ safe_on_update(function()
             end
 
             if spell_name == "dash" then
-                -- Dash: use as a gap closer when target is not too close and not too far
+                -- Dash: gap closer
                 local dash_min_gap = 4.0
                 local dash_max_gap = 12.0
                 local dist_sqr_mt = player_position_mt:squared_dist_to_ignore_z(target_position_mt)
@@ -1973,56 +1788,33 @@ safe_on_update(function()
                     goto continue
                 end
 
-                -- Dash is allowed even when Disable Auto Movement is enabled
+                -- Don't dash while channeling Dance of Knives
                 if is_dance_of_knives_profile and is_dance_channeling then
                     goto continue
                 end
                 result = spell.logics(move_target)
                 if result then
                     _G.last_dash_time = current_time
-                    local profile_index_dash = safe_get_menu_element(menu.menu_elements.profile, 0)
-                    local dash_pause = 0.2
-                    if profile_index_dash == 1 then
-                        dash_pause = 0.45
-                    end
-                    cast_end_time = current_time + dash_pause
-                    if is_boss_fight then console.print("Dash: Meta build mobility used") end
+                    cast_end_time = current_time + 0.2
                     return
                 end
             elseif spell_name == "shadow_step" then
-                -- Shadow Step still respects the Disable Auto Movement toggle, except for the Death Trap
-                -- and TB Leveling profiles (which rely on scripted Step for proper rotation). Let the
-                -- spell's own menu-controlled range logic decide when it's in range instead of adding
-                -- another hardcoded distance gate here.
+                -- Shadow Step for positioning
                 local profile_index_shadow = safe_get_menu_element(menu.menu_elements.profile, 0)
-                if profile_index_shadow == 1 or profile_index_shadow == 5 or not is_movement_disabled() then
+                -- Death Trap (0), Dance of Knives (1), and Poison TB (5) profiles can use shadow step for rotation
+                if profile_index_shadow == 0 or profile_index_shadow == 1 or profile_index_shadow == 5 or not is_movement_disabled() then
                     result = spell.logics(target_list, target_selector_data_all, move_target, closest_target)
                     if result then
                         _G.last_shadow_step_time = current_time
                         cast_end_time = current_time + 0.2
-                        if is_boss_fight then console.print("Shadow Step: Meta build mobility used") end
                         return
                     end
                 end
             end
         elseif spell_name == "heartseeker" then
-            -- Heartseeker handling:
-            --  * In the dedicated Heartseeker build, keep the special logic that
-            --    prefers high-value / already-debuffed targets.
-            --  * In the Heartseeker-standard-PIT profile, treat Heartseeker as a
-            --    straightforward filler on the best target so it can spam more
-            --    reliably on single-target when chosen.
-            if is_pit_flurry_profile then
-                -- Simple filler behavior for the pit Flurry build
-                local hs_target = best_target or closest_target
-                if hs_target and hs_target:is_enemy() then
-                    if spell.logics(hs_target) then
-                        _G.last_heartseeker_cast_time = current_time
-                        cast_end_time = current_time + spell.menu_elements_heartseeker_base.spell_cast_delay:get()
-                        return
-                    end
-                end
-            elseif is_best_target_exception then
+            -- Heartseeker: prioritize vulnerable/debuffed targets in Heartseeker build (profile 2)
+            local profile_index_hs = safe_get_menu_element(menu.menu_elements.profile, 0)
+            if profile_index_hs == 2 and is_best_target_exception then
 	            local sorted_entities = {}
 	            for i, v in ipairs(target_list) do
 	                sorted_entities[i] = v
