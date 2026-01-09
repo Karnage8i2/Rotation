@@ -16,7 +16,8 @@ end
 
 -- Returns the active spell priority list based on selected profile
 -- S11 Build Profiles with AOE and Boss mode optimization
-local function get_active_spell_priority()
+-- Parameters: player_position (optional) - used for auto-detection of AOE vs Boss mode
+local function get_active_spell_priority(player_position)
     -- Profile: 0 = Death Trap, 1 = Dance of Knives, 2 = Heartseeker, 3 = Flurry, 4 = Rain of Arrows, 5 = Poison Twisting Blades
     local profile_index = safe_get_menu_element(menu.menu_elements.profile, 0)
     local rotation_mode = safe_get_menu_element(menu.menu_elements.rotation_mode, 0) -- 0=Auto, 1=AOE, 2=Boss
@@ -30,8 +31,7 @@ local function get_active_spell_priority()
     elseif rotation_mode == 2 then
         use_boss_priority = true
     else
-        -- Auto mode: determine based on enemy density
-        local player_position = safe_get_player_position()
+        -- Auto mode: determine based on enemy density (only if player_position is provided)
         if player_position then
             local all_units_count, normal_units_count, elite_units_count, champion_units_count, boss_units_count = 
                 my_utility.enemy_count_in_range(12.0, player_position)
@@ -48,6 +48,9 @@ local function get_active_spell_priority()
                 -- Default to balanced (use boss priority for safety)
                 use_boss_priority = true
             end
+        else
+            -- If no player position provided, default to boss priority
+            use_boss_priority = true
         end
     end
 
@@ -733,7 +736,7 @@ safe_on_render_menu(function()
 
     if menu.menu_elements.spells_tree:push("Equipped Spells") then
         -- Display spells in priority order, but only if they're equipped
-        local active_spell_priority = get_active_spell_priority()
+        local active_spell_priority = get_active_spell_priority(nil)
         for _, spell_name in ipairs(active_spell_priority) do
             if equipped_lookup[spell_name] and spells[spell_name] then
                 local spell = spells[spell_name]
@@ -746,7 +749,7 @@ safe_on_render_menu(function()
     end
 
     if menu.menu_elements.disabled_spells_tree:push("Inactive Spells") then
-        local active_spell_priority = get_active_spell_priority()
+        local active_spell_priority = get_active_spell_priority(nil)
         for _, spell_name in ipairs(active_spell_priority) do
             local spell = spells[spell_name]
             if spell and spell.menu and (not equipped_lookup[spell_name] or 
@@ -1536,7 +1539,7 @@ safe_on_update(function()
     end
 
     -- S11 Main Spell Rotation based on active spell priority
-    local active_spell_priority = get_active_spell_priority()
+    local active_spell_priority = get_active_spell_priority(player_position)
     local profile_index_rotation_meta = safe_get_menu_element(menu.menu_elements.profile, 0)
     local is_dance_of_knives_profile = (profile_index_rotation_meta == 1) -- Dance of Knives is profile 1 in S11
     local is_dance_channeling = false
