@@ -11,7 +11,9 @@ local spell_priority = {
     "poison_trap",
     "caltrop",
     "shadow_step",
-    "dash"
+    "dash",
+    "blade_shift",       -- basic skill for energy generation
+    "puncture"           -- alternative basic skill
 }
 
 return spell_priority

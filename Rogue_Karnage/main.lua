@@ -66,6 +66,8 @@ local function get_active_spell_priority(player_position)
                 "caltrop",           -- vulnerable/control
                 "shadow_step",       -- mobility
                 "dash",              -- reposition
+                "blade_shift",       -- basic skill for energy
+                "puncture",          -- alternative basic
             }
         else
             -- Boss: More controlled, defensive setup
@@ -78,6 +80,8 @@ local function get_active_spell_priority(player_position)
                 "caltrop",           -- vulnerable setup
                 "shadow_step",       -- engage
                 "dash",              -- reposition
+                "blade_shift",       -- basic skill for energy
+                "puncture",          -- alternative basic
             }
         end
     elseif profile_index == 1 then
@@ -90,6 +94,8 @@ local function get_active_spell_priority(player_position)
                 "poison_trap",       -- area damage
                 "caltrop",           -- control
                 "dash",              -- mobility
+                "blade_shift",       -- basic skill for energy
+                "puncture",          -- alternative basic
             }
         else
             -- Boss: Longer channels with defensive setup
@@ -100,6 +106,8 @@ local function get_active_spell_priority(player_position)
                 "poison_trap",       -- sustained damage
                 "caltrop",           -- kiting
                 "dash",              -- mobility
+                "blade_shift",       -- basic skill for energy
+                "puncture",          -- alternative basic
             }
         end
     elseif profile_index == 2 then
@@ -113,6 +121,8 @@ local function get_active_spell_priority(player_position)
                 "barrage",           -- AOE core
                 "heartseeker",       -- filler
                 "dash",              -- mobility
+                "forcefull_arrow",   -- basic skill for energy
+                "puncture",          -- alternative basic
             }
         else
             -- Boss: Heartseeker spam with burst windows
@@ -125,6 +135,8 @@ local function get_active_spell_priority(player_position)
                 "flurry",            -- close range
                 "dash",              -- mobility
                 "shadow_step",       -- engage
+                "forcefull_arrow",   -- basic skill for energy
+                "puncture",          -- alternative basic
             }
         end
     elseif profile_index == 3 then
@@ -136,6 +148,8 @@ local function get_active_spell_priority(player_position)
                 "poison_trap",       -- area damage
                 "flurry",            -- primary spam
                 "dash",              -- mobility
+                "blade_shift",       -- basic skill for energy
+                "puncture",          -- alternative basic
             }
         else
             -- Boss: Controlled Flurry with burst
@@ -148,6 +162,8 @@ local function get_active_spell_priority(player_position)
                 "flurry",            -- primary spam
                 "dash",              -- mobility
                 "shadow_step",       -- engage
+                "blade_shift",       -- basic skill for energy
+                "puncture",          -- alternative basic
             }
         end
     elseif profile_index == 4 then
@@ -160,6 +176,8 @@ local function get_active_spell_priority(player_position)
                 "rain_of_arrows",    -- primary AOE
                 "barrage",           -- secondary AOE
                 "dash",              -- mobility
+                "forcefull_arrow",   -- basic skill for energy
+                "puncture",          -- alternative basic
             }
         else
             -- Boss: Rain with burst windows
@@ -173,6 +191,8 @@ local function get_active_spell_priority(player_position)
                 "barrage",           -- secondary
                 "heartseeker",       -- filler
                 "dash",              -- mobility
+                "forcefull_arrow",   -- basic skill for energy
+                "puncture",          -- alternative basic
             }
         end
     elseif profile_index == 5 then
@@ -186,6 +206,8 @@ local function get_active_spell_priority(player_position)
                 "twisting_blade",     -- primary spam
                 "dash",               -- mobility
                 "shadow_step",        -- engage
+                "blade_shift",        -- basic skill for energy
+                "puncture",           -- alternative basic
             }
         else
             -- Boss: Controlled poison build-up
@@ -196,7 +218,8 @@ local function get_active_spell_priority(player_position)
                 "death_trap",         -- burst
                 "poison_trap",        -- sustained damage
                 "twisting_blade",     -- primary damage
-                "blade_shift",        -- basic
+                "blade_shift",        -- basic skill for energy
+                "puncture",           -- alternative basic
                 "shadow_step",        -- mobility
                 "dash",               -- reposition
             }
@@ -213,6 +236,8 @@ local function get_active_spell_priority(player_position)
         "caltrop",
         "shadow_step",
         "dash",
+        "blade_shift",       -- basic skill for energy
+        "puncture",          -- alternative basic
     }
 end
 
