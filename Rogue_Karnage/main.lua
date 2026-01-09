@@ -213,13 +213,8 @@ local function get_active_spell_priority()
     }
 end
 
--- Simple build configuration, used to specialize behavior for certain profiles
-local build_config = {
-    pit_flurry_shadow_imb = {
-        profile_index = 2,   -- Heartseeker-standard-PIT profile index
-        trash_enemy_threshold = 4, -- Enemies at/above this count are treated as AoE trash packs
-    }
-}
+-- Simple build configuration, no longer needed for S11
+local build_config = {}
 
 local function safe_get_player_position()
     local pos = get_player_position()
@@ -1434,8 +1429,7 @@ safe_on_update(function()
         end
     end
 
-    -- Normal Mode: Main spell rotation with prioritization
-    -- Check if we're fighting a boss (like Belial) and enable aggressive mode
+    -- S11: Check if we're fighting a boss and enable aggressive mode
     local is_boss_fight = false
     if best_target and (best_target:is_boss() or best_target:is_champion()) then
         is_boss_fight = true
@@ -1449,99 +1443,27 @@ safe_on_update(function()
         end
     end
 
-    -- Pit build specialization: determine trash AoE vs single-target burst mode
-    local profile_index = safe_get_menu_element(menu.menu_elements.profile, 0)
-    -- Treat Death Trap PIT (1), Heartseeker-standard-PIT (2), Heartseeker Pit Hybrid (3) and Dance of Knives PIT (4) as pit profiles
-    local is_pit_flurry_profile = (build_config.pit_flurry_shadow_imb and (profile_index == 1 or profile_index == build_config.pit_flurry_shadow_imb.profile_index or profile_index == 3 or profile_index == 4))
-    local is_trash_aoe_mode = false
-    local is_single_target_burst = false
-
-    if is_pit_flurry_profile then
-        local enemy_count_near_player = 0
-        local high_value_near_player = false
-        if player_position then
-            local ok, all_units_count, normal_units_count, elite_units_count, champion_units_count, boss_units_count = pcall(function()
-                return my_utility.enemy_count_in_range(build_config.pit_flurry_shadow_imb.trash_enemy_threshold + 2.0, player_position)
-            end)
-            if ok then
-                enemy_count_near_player = all_units_count or 0
-                high_value_near_player = (elite_units_count or 0) > 0 or (champion_units_count or 0) > 0 or (boss_units_count or 0) > 0
-            end
-        end
-
-        if high_value_near_player and enemy_count_near_player <= build_config.pit_flurry_shadow_imb.trash_enemy_threshold then
-            -- Few enemies but at least one elite/champion/boss: treat as single-target burst
-            is_single_target_burst = true
-        elseif enemy_count_near_player >= build_config.pit_flurry_shadow_imb.trash_enemy_threshold then
-            -- High enemy count: prefer trash AoE behavior
-            is_trash_aoe_mode = true
-        end
-    end
-    
-    -- Process boss buff rotation for boss/elite encounters (normal mode only)
+    -- S11: Process boss buff rotation for boss/elite encounters
     if (is_boss_fight or boss_buff_manager.is_boss_encounter(target_list, best_target)) then
         local buff_casted, buff_spell = boss_buff_manager.process_boss_buff_rotation(target_list, target_selector_data_all, best_target, false)
         if buff_casted then
             cast_end_time = current_time + 0.3
-            console.print("Boss Buff Manager: Cast " .. buff_spell .. " for buff effect before penetrating shot")
-            return -- Exit after casting buff spell to prioritize buffs over penetrating shot
+            console.print("Boss Buff Manager: Cast " .. buff_spell .. " for buff effect")
+            return
         end
     end
     
-    -- Cast penetrating shot with configurable speed (Penetrating Shot profile only)
-    local profile_index = safe_get_menu_element(menu.menu_elements.profile, 0)
-    if profile_index == 0 then
-        local spell = spells["penetrating_shot"]
-        if spell and spell.logics and utility.is_spell_ready(377137) and 
-           (not spell.menu_elements or spell.menu_elements.main_boolean:get()) then
-            -- Check if slow penetrating shot is enabled and apply cooldown
-            local last_penetrating_shot_time = _G.last_penetrating_shot_time or 0
-            local cast_delay = safe_get_menu_element(menu.menu_elements.slow_penetrating_shot, false) and 
-                              safe_get_menu_element(menu.menu_elements.slow_penetrating_shot_delay, 0.01) or 0.001
-            
-            -- Check if enough time has passed since last cast
-            if current_time - last_penetrating_shot_time >= cast_delay then
-                local result = spell.logics(target_list, target_selector_data_all, best_target)
-                if result then
-                    cast_end_time = current_time + 0.1 -- Small delay for next frame
-                    return -- Exit after casting penetrating shot to prioritize it
-                elseif is_boss_fight then
-                    console.print("Penetrating shot failed to cast in boss fight")
-                end
-            end
-        end
-    end
-    
-    -- Check if spells were cast recently to prevent over-prioritization over penetrating shot
+    -- S11: Cooldown management
     -- Reduce cooldowns in boss fights for more aggressive casting
-    local cooldown_multiplier = is_boss_fight and 0.3 or 1.0 -- 70% reduction in boss fights for area spells
-
-    -- Pit build adjustments: be more aggressive in AoE trash and controlled in single-target burst
-    if is_pit_flurry_profile then
-        if is_trash_aoe_mode then
-            -- In high-density trash, spam area tools and imbuement more aggressively
-            cooldown_multiplier = 0.5 * cooldown_multiplier
-        elseif is_single_target_burst then
-            -- In boss/elite single-target, lean on existing boss multiplier but avoid going too crazy
-            cooldown_multiplier = math.max(cooldown_multiplier, 0.4)
-        end
-    end
-    
-    local caltrop_cooldown = 3.0 * cooldown_multiplier -- 3 second cooldown for caltrop to prevent spam
-    local smoke_grenade_cooldown = 4.0 * cooldown_multiplier -- 4 second cooldown for smoke grenade to prevent spam
-    local poison_trap_cooldown = 4.0 * cooldown_multiplier -- 4 second cooldown for poison trap to prevent spam
-    if is_pit_flurry_profile and is_trash_aoe_mode then
-        poison_trap_cooldown = 3.0 * cooldown_multiplier
-    end
-    local shadow_imbuement_cooldown = 8.0 * cooldown_multiplier -- 8 second cooldown for shadow imbuement to prevent spam
-    local shadow_clone_cooldown = 5.0 * cooldown_multiplier -- 5 second cooldown for shadow clone to prevent spam
-    if is_pit_flurry_profile and is_trash_aoe_mode then
-        -- In high-density trash AoE, allow more frequent Shadow Clone usage for faster clear
-        shadow_clone_cooldown = 3.0 * cooldown_multiplier
-    end
-    local dash_cooldown = 3.0 * cooldown_multiplier -- 3 second cooldown for dash to prevent spam
-    local shadow_step_cooldown = 4.0 * cooldown_multiplier -- 4 second cooldown for shadow step to prevent spam
-    local dark_shroud_cooldown = 6.0 * cooldown_multiplier -- 6 second cooldown for dark shroud to prevent spam
+    local cooldown_multiplier = is_boss_fight and 0.3 or 1.0
+    local caltrop_cooldown = 3.0 * cooldown_multiplier
+    local smoke_grenade_cooldown = 4.0 * cooldown_multiplier
+    local poison_trap_cooldown = 4.0 * cooldown_multiplier
+    local shadow_imbuement_cooldown = 8.0 * cooldown_multiplier
+    local shadow_clone_cooldown = 5.0 * cooldown_multiplier
+    local dash_cooldown = 3.0 * cooldown_multiplier
+    local shadow_step_cooldown = 4.0 * cooldown_multiplier
+    local dark_shroud_cooldown = 6.0 * cooldown_multiplier
     
     local last_caltrop_time = _G.last_caltrop_time or 0
     local last_smoke_grenade_time = _G.last_smoke_grenade_time or 0
@@ -1844,17 +1766,14 @@ safe_on_update(function()
         ::continue::
     end
 
-    -- Heartseeker filler: if we're on a Heartseeker-focused profile and nothing
-    -- above has returned, try to cast Heartseeker as a basic filler.
+    -- S11: Heartseeker filler for Heartseeker build (profile 2)
     do
         local profile_index = safe_get_menu_element(menu.menu_elements.profile, 0)
-        if profile_index == 1 or profile_index == 3 then -- Heartseeker profiles
+        if profile_index == 2 then -- Heartseeker build is profile 2 in S11
             local heartseeker_spell = spells["heartseeker"]
             if heartseeker_spell and heartseeker_spell.logics then
-                -- Prefer best_target, fall back to closest_target
                 local hs_target = best_target or closest_target
                 if hs_target and hs_target:is_enemy() then
-                    -- Range detection: don't bother trying filler on very far targets
                     local player_position = safe_get_player_position()
                     local target_position = hs_target:get_position()
                     local max_range = 26
@@ -1863,52 +1782,26 @@ safe_on_update(function()
                         max_range = heartseeker_spell.menu_elements_heartseeker_base.filler_range:get()
                     end
 
-                    if player_position:squared_dist_to_ignore_z(target_position) > (max_range * max_range) then
-                        goto hs_filler_end
-                    end
-
-                    local ok = heartseeker_spell.logics(hs_target)
-                    if ok then
-                        local current_time = safe_get_time_since_inject()
-                        local delay = 0.1
-                        if heartseeker_spell.menu_elements_heartseeker_base
-                           and heartseeker_spell.menu_elements_heartseeker_base.spell_cast_delay then
-                            delay = heartseeker_spell.menu_elements_heartseeker_base.spell_cast_delay:get()
+                    if player_position:squared_dist_to_ignore_z(target_position) <= (max_range * max_range) then
+                        local ok = heartseeker_spell.logics(hs_target)
+                        if ok then
+                            local current_time = safe_get_time_since_inject()
+                            local delay = 0.1
+                            if heartseeker_spell.menu_elements_heartseeker_base
+                               and heartseeker_spell.menu_elements_heartseeker_base.spell_cast_delay then
+                                delay = heartseeker_spell.menu_elements_heartseeker_base.spell_cast_delay:get()
+                            end
+                            cast_end_time = current_time + delay
+                            return
                         end
-                        cast_end_time = current_time + delay
-                        return
                     end
-                end
-            end
-        end
-    end
-    ::hs_filler_end::
-
-    -- Meta build: Cast Penetrating Shot with configurable speed (Penetrating Shot profile only)
-    local profile_index_meta = safe_get_menu_element(menu.menu_elements.profile, 0)
-    if profile_index_meta == 0 then
-        local spell = spells["penetrating_shot"]
-        if spell and spell.logics and utility.is_spell_ready(377137) and 
-           (not spell.menu_elements or spell.menu_elements.main_boolean:get()) then
-            -- Check if slow penetrating shot is enabled and apply cooldown
-            local last_penetrating_shot_time = _G.last_penetrating_shot_time or 0
-            local cast_delay = safe_get_menu_element(menu.menu_elements.slow_penetrating_shot, false) and 
-                              safe_get_menu_element(menu.menu_elements.slow_penetrating_shot_delay, 0.01) or 0.001
-            
-            -- Check if enough time has passed since last cast
-            if current_time - last_penetrating_shot_time >= cast_delay then
-                local result = spell.logics(target_list, target_selector_data_all, best_target)
-                if result then
-                    cast_end_time = current_time + 0.1 -- Small delay for next frame
-                    if is_boss_fight then console.print("Penetrating Shot: Meta build primary damage spam") end
                 end
             end
         end
     end
 
     -- Auto-play movement logic with wall bounce optimization
-    -- Completely disable auto movement when using the Dance of Knives PIT profile
-    -- Also disable script-driven auto movement for TB Leveling profile (index 5)
+    -- S11: Disable auto movement for Dance of Knives (1) and Poison TB (5) profiles
     local profile_index_movement = safe_get_menu_element(menu.menu_elements.profile, 0)
     if (not is_dance_of_knives_profile)
        and profile_index_movement ~= 5

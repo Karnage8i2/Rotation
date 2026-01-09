@@ -1,25 +1,119 @@
-# Rogue-DeathTrap Smoke Enhanced
+# Rogue Season 11 Builds
 
-## Current Spell Rotation (Updated 2025-01-27)
+## Current Build Profiles (Updated 2026-01-09)
 
-The script now uses a sophisticated spell priority system with the following order:
+The script now includes 6 optimized Season 11 Rogue builds with intelligent AOE/Boss rotation modes.
 
-### Core Rotation Priority:
-1. **Caltrop** - Area denial and crowd control
-2. **Smoke Grenade** - Defensive positioning and enemy disruption
-3. **Poison Trap** - Damage over time and area control
-4. **Shadow Imbuement** - Always maintain buff (highest priority)
-5. **Shadow Clone** - Frequent usage based on cooldown and energy
-6. **Penetrating Shot** - Primary damage spell (spammed aggressively)
-7. **Dash** - Mobility and positioning
-8. **Shadow Step** - Advanced mobility and positioning
-9. **Dark Shroud** - Additional utility and defense
+### Available Profiles:
 
-### Special Spell Logic:
-- **Shadow Imbuement**: Always maintained, conflicts with other imbuements are avoided
-- **Shadow Clone**: Uses enhanced targeting for optimal positioning, cast when available
-- **Dance of Knives**: Cast every 12 seconds after Shadow Clone, requires Shadow Imbuement to be active
-- **Penetrating Shot**: Aggressively spammed after main rotation completes
+1. **Death Trap** - AOE burst trap build
+2. **Dance of Knives** - Channeling AOE build
+3. **Heartseeker** - Ranged precision build
+4. **Flurry** - Melee rapid attack build
+5. **Rain of Arrows** - Ranged AOE volley build
+6. **Poison Twisting Blades** - Melee poison build
+
+### Rotation Modes:
+
+Each profile includes three rotation modes:
+- **Auto**: Automatically adapts based on enemy density (default)
+  - Uses Boss Priority for elites/champions/bosses or small packs
+  - Uses AOE Priority for large trash packs (5+ enemies)
+- **AOE Priority**: Optimized for trash pack clearing
+- **Boss Priority**: Optimized for single target, elites, and bosses
+
+### Profile Details:
+
+#### 1. Death Trap Build
+**AOE Rotation:**
+- Quick stealth setup with Concealment
+- Shadow Imbuement to amplify traps
+- Death Trap as primary nuke
+- Layered Poison Trap for sustained AOE
+- Caltrop for vulnerable/control
+
+**Boss Rotation:**
+- Dark Shroud for defensive layer
+- Concealment for burst window
+- Shadow Imbuement to amplify damage
+- Death Trap on priority targets
+- Poison Trap for sustained damage
+
+#### 2. Dance of Knives Build
+**AOE Rotation:**
+- Poison Imbuement to amplify Dance
+- Dance of Knives channel on packs
+- Poison Trap for area damage
+- Caltrop for control
+
+**Boss Rotation:**
+- Concealment for defensive setup
+- Poison Imbuement synergy
+- Longer Dance of Knives channels
+- Poison Trap for sustained damage
+
+#### 3. Heartseeker Build
+**AOE Rotation:**
+- Caltrop for vulnerable setup
+- Poison Trap for area damage
+- Shadow Imbuement for damage boost
+- Barrage as AOE core
+- Heartseeker filler
+
+**Boss Rotation:**
+- Dark Shroud for defense
+- Smoke Grenade for damage amp
+- Shadow Imbuement for boost
+- Shadow Clone for burst
+- Heartseeker spam
+- Flurry for close range
+
+#### 4. Flurry Build
+**AOE Rotation:**
+- Shadow Imbuement for multiplier
+- Poison Trap for area damage
+- Flurry spam as primary
+
+**Boss Rotation:**
+- Dark Shroud for defense
+- Smoke Grenade for boss damage
+- Shadow Imbuement multiplier
+- Shadow Clone for burst
+- Caltrop for vulnerable
+- Flurry spam
+
+#### 5. Rain of Arrows Build
+**AOE Rotation:**
+- Caltrop for vulnerable
+- Shadow Imbuement boost
+- Rain of Arrows primary AOE
+- Barrage secondary AOE
+
+**Boss Rotation:**
+- Dark Shroud defense
+- Smoke Grenade amp
+- Poison Trap control
+- Shadow Imbuement boost
+- Shadow Clone burst
+- Rain of Arrows primary
+- Barrage secondary
+- Heartseeker filler
+
+#### 6. Poison Twisting Blades Build
+**AOE Rotation:**
+- Poison Imbuement synergy
+- Death Trap burst setup
+- Poison Trap layered damage
+- Twisting Blades spam
+
+**Boss Rotation:**
+- Concealment stealth opener
+- Poison Imbuement synergy
+- Shadow Imbuement support
+- Death Trap burst
+- Poison Trap sustained damage
+- Twisting Blades primary
+- Blade Shift basic attack
 
 ## Major Enhancements
 
@@ -28,25 +122,25 @@ The script now uses a sophisticated spell priority system with the following ord
    - Target caching to reduce performance impact
    - Multiple targeting modes (ranged, melee, cursor-based)
    - Better enemy prioritization for AoE abilities
-   - Enhanced targeting for all AoE spells (Death Trap, Poison Trap, Rain of Arrows, etc.)
+   - Enhanced targeting for all AoE spells
 
-2. **Enhanced Menu System:**
-   - Comprehensive settings panel for fine-tuning all aspects
-   - Debug visualization options for targeting and range indicators
+2. **Intelligent Rotation System:**
+   - Auto-detection of AOE vs Boss scenarios
+   - Separate optimized rotations for each mode
+   - Manual override options available
+   - Adaptive cooldown management
+
+3. **Enhanced Menu System:**
+   - Comprehensive settings panel for fine-tuning
+   - Debug visualization options
    - Organized spell categories (equipped vs. inactive)
    - Custom enemy weighting options
-
-3. **Optimized Spell Prioritization:**
-   - Structured spell priority system based on effectiveness
-   - Smarter casting logic for situational spells
-   - Better buff and debuff tracking
-   - Improved resource management
 
 4. **Performance Improvements:**
    - Cached targeting to reduce CPU usage
    - Configurable targeting refresh rate
    - Optimized spell evaluation logic
-   - Early returns when minimum enemy count isn't met
+   - Early returns for efficiency
 
 5. **Momentum Management:**
    - Smart stacking of Momentum buff for maximum damage output
