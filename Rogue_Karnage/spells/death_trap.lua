@@ -19,6 +19,7 @@ local menu_elements =
     min_percentage_hits   = slider_float:new(0.1, 1.0, 0.55, get_hash(my_utility.plugin_label .. "min_percentage_hits_trap_base")),
     spell_range          = slider_float:new(1.0, 15.0, 3.50, get_hash(my_utility.plugin_label .. "death_trap_spell_range_2")),
     spell_radius         = slider_float:new(0.50, 10.0, 5.50, get_hash(my_utility.plugin_label .. "death_trap_spell_radius_2")),
+    prefer_boss_position = checkbox:new(true, get_hash(my_utility.plugin_label .. "death_trap_prefer_boss_position")),
     debug_enabled        = checkbox:new(false, get_hash(my_utility.plugin_label .. "debug_enabled_death_trap")),
 }
 
@@ -41,6 +42,7 @@ local function render_menu()
 
         menu_elements.spell_range:render("Spell Range", "", 1)
         menu_elements.spell_radius:render("Spell Radius", "", 1)
+        menu_elements.prefer_boss_position:render("Prefer Boss Position", "Cast Death Trap directly on boss/elite when present (guaranteed hit)")
         menu_elements.debug_enabled:render("Enable Debug", "Show debug information")
 
         menu_elements.tree_tab:pop();
@@ -114,6 +116,22 @@ local function logics(entity_list, target_selector_data, best_target)
     local high_value_present = boss_units_count > 0 or elite_units_count > 0 or champion_units_count > 0
     if high_value_present and debug_enabled then
         console.print("Death Trap: High-value target detected - bypassing minimum enemy count requirement")
+    end
+
+    -- Check if we should prefer casting on boss position
+    local prefer_boss = menu_elements.prefer_boss_position:get()
+    if prefer_boss and high_value_present and best_target and best_target:is_valid() then
+        local boss_pos = best_target:get_position()
+        local dist_sqr = player_position:squared_dist_to_ignore_z(boss_pos)
+        if dist_sqr <= (spell_range * spell_range) then
+            if debug_enabled then console.print("Death Trap: Prefer Boss Position enabled - casting directly on high-value target") end
+            if cast_spell and cast_spell.position and cast_spell.position(death_trap_spell_id, boss_pos, 0.40) then
+                next_time_allowed_cast = current_time + 0.01
+                _G.last_death_trap_time = current_time
+                console.print("Rouge Plugin: Casted Death Trap directly on boss/elite position")
+                return true
+            end
+        end
     end
 
     -- Do not cast on a single normal enemy when no high-value target is present
