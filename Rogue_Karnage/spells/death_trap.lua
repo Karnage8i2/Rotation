@@ -55,6 +55,14 @@ local next_time_allowed_cast = 0.01;
 local function logics(entity_list, target_selector_data, best_target)
     local debug_enabled = menu_elements.debug_enabled:get()
     
+    -- Always log when function is called to debug boss fights
+    if debug_enabled then
+        local has_best = best_target and best_target:is_valid()
+        local list_count = (type(entity_list) == "table") and #entity_list or 0
+        console.print(string.format("Death Trap: Called with best_target=%s, entity_list count=%d", 
+            tostring(has_best), list_count))
+    end
+    
     -- Basic checks
     if not menu_elements.main_boolean:get() then
         if debug_enabled then console.print("Death Trap: Disabled in menu") end
@@ -74,6 +82,10 @@ local function logics(entity_list, target_selector_data, best_target)
     
     -- Get player position
     local player_position = get_player_position()
+    if not player_position then
+        if debug_enabled then console.print("Death Trap: No player position") end
+        return false
+    end
     
     -- Handle keybind mode
     local keybind_used = menu_elements.keybind:get_state()
@@ -83,20 +95,38 @@ local function logics(entity_list, target_selector_data, best_target)
         return false
     end
     
-    -- Check for Prefer Boss Position early - allows casting even with empty entity list
+    -- Check for Prefer Boss Position FIRST - allows casting even with empty entity list
     local prefer_boss = menu_elements.prefer_boss_position:get()
+    if debug_enabled then
+        console.print(string.format("Death Trap: Prefer boss=%s, best_target valid=%s", 
+            tostring(prefer_boss), tostring(best_target and best_target:is_valid())))
+    end
+    
     if prefer_boss and best_target and best_target:is_valid() then
         local spell_range = menu_elements.spell_range:get()
         local boss_pos = best_target:get_position()
-        local dist_sqr = player_position:squared_dist_to_ignore_z(boss_pos)
-        if dist_sqr <= (spell_range * spell_range) then
-            if debug_enabled then console.print("Death Trap: Prefer Boss Position enabled - casting directly on best target (early check)") end
-            if cast_spell and cast_spell.position and cast_spell.position(death_trap_spell_id, boss_pos, 0.40) then
-                next_time_allowed_cast = current_time + 0.01
-                _G.last_death_trap_time = current_time
-                console.print("Rouge Plugin: Casted Death Trap directly on best target position")
-                return true
+        if boss_pos then
+            local dist_sqr = player_position:squared_dist_to_ignore_z(boss_pos)
+            local dist = math.sqrt(dist_sqr)
+            if debug_enabled then
+                console.print(string.format("Death Trap: Distance to best_target: %.2f (range: %.2f)", dist, spell_range))
             end
+            
+            if dist_sqr <= (spell_range * spell_range) then
+                if debug_enabled then console.print("Death Trap: Prefer Boss Position - attempting cast on best_target") end
+                if cast_spell and cast_spell.position and cast_spell.position(death_trap_spell_id, boss_pos, 0.40) then
+                    next_time_allowed_cast = current_time + 0.01
+                    _G.last_death_trap_time = current_time
+                    console.print("Rouge Plugin: Casted Death Trap directly on best_target (Prefer Boss Position)")
+                    return true
+                else
+                    if debug_enabled then console.print("Death Trap: Cast failed on best_target position") end
+                end
+            else
+                if debug_enabled then console.print("Death Trap: best_target out of range") end
+            end
+        else
+            if debug_enabled then console.print("Death Trap: best_target has no position") end
         end
     end
     
@@ -149,24 +179,6 @@ local function logics(entity_list, target_selector_data, best_target)
     
     if high_value_present and debug_enabled then
         console.print("Death Trap: High-value target detected - bypassing minimum enemy count requirement")
-    end
-
-    -- Check if we should prefer casting on boss position
-    local prefer_boss = menu_elements.prefer_boss_position:get()
-    if prefer_boss and best_target and best_target:is_valid() then
-        local boss_pos = best_target:get_position()
-        local dist_sqr = player_position:squared_dist_to_ignore_z(boss_pos)
-        if dist_sqr <= (spell_range * spell_range) then
-            -- When prefer_boss is enabled, cast on best_target regardless of whether it's classified as high-value
-            -- This ensures we hit the current target (which is usually the most important one)
-            if debug_enabled then console.print("Death Trap: Prefer Boss Position enabled - casting directly on best target") end
-            if cast_spell and cast_spell.position and cast_spell.position(death_trap_spell_id, boss_pos, 0.40) then
-                next_time_allowed_cast = current_time + 0.01
-                _G.last_death_trap_time = current_time
-                console.print("Rouge Plugin: Casted Death Trap directly on best target position")
-                return true
-            end
-        end
     end
 
     -- Do not cast on a single normal enemy when no high-value target is present
