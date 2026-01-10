@@ -6,7 +6,8 @@ local menu_elements_concealment_base =
     main_boolean          = checkbox:new(true, get_hash(my_utility.plugin_label .. "main_boolean_concealment")),
     apply_vulnerable       = checkbox:new(true, get_hash(my_utility.plugin_label .. "apply_vulnerable_concealment")),
     as_defensive           = checkbox:new(true, get_hash(my_utility.plugin_label .. "as_defensive_concealment")),
-    defensive_health       = slider_float:new(0.0, 1.0, 0.30, get_hash(my_utility.plugin_label .. "%_hp_to_cast_concealment"))
+    defensive_health       = slider_float:new(0.0, 1.0, 0.30, get_hash(my_utility.plugin_label .. "%_hp_to_cast_concealment")),
+    min_cooldown          = slider_float:new(0.0, 20.0, 0.5, get_hash(my_utility.plugin_label .. "min_cooldown_concealment"))
 }
 
 local function menu()
@@ -20,6 +21,7 @@ local function menu()
                 if menu_elements_concealment_base.as_defensive:get() then
                     menu_elements_concealment_base.defensive_health:render("Min cast HP Percent", "", 2)
                 end
+            menu_elements_concealment_base.min_cooldown:render("Min Cooldown (seconds)", "Minimum time between casts", 1)
         end
 
         menu_elements_concealment_base.tree_tab:pop()
@@ -39,6 +41,14 @@ local function logics()
     if not is_logic_allowed then
     return false;
     end;
+    
+    -- Check minimum cooldown from last cast
+    local current_time = get_time_since_inject();
+    local last_cast_time = _G.last_concealment_time or 0
+    local min_cooldown = menu_elements_concealment_base.min_cooldown:get()
+    if current_time - last_cast_time < min_cooldown then
+        return false;
+    end
     
     local player_pos = get_player_position()
 
@@ -69,8 +79,8 @@ local function logics()
 
     if cast_spell.self(spell_id_concealment, 0.000) then
         
-        -- ignore global cooldown -- test 04/06/2024 -- qqt
-        local current_time = get_time_since_inject();
+        -- Update cooldown tracking
+        _G.last_concealment_time = current_time;
         next_time_allowed_cast = current_time + 0.5;
         console.print("Casted Concealment")
         return true;
