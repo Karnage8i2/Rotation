@@ -52,6 +52,10 @@ local function logics()
     
     local player_pos = get_player_position()
 
+    -- Check if at least one condition is met (OR logic, not AND)
+    local defensive_check_passed = false
+    local offensive_check_passed = false
+    
     -- Use Concealment as Defensive ability
     if menu_elements_concealment_base.as_defensive:get() then
         local local_player = get_local_player();
@@ -59,18 +63,29 @@ local function logics()
         local player_max_health = local_player:get_max_health();
         local health_percentage = player_current_health / player_max_health;
         local menu_min_percentage = menu_elements_concealment_base.defensive_health:get();
-        if health_percentage > menu_min_percentage then
-            return false;
+        if health_percentage <= menu_min_percentage then
+            defensive_check_passed = true
         end
+    else
+        -- If defensive check is disabled, consider it passed
+        defensive_check_passed = true
     end
 
     -- Use Concealment as Offensive ability
     if menu_elements_concealment_base.apply_vulnerable:get() then
         local area_data = target_selector.get_most_hits_target_circular_area_light(player_pos, 6.0, 6.0, false)
         local units = area_data.n_hits
-        if units < 1 then
-            return false;
-        end;
+        if units >= 1 then
+            offensive_check_passed = true
+        end
+    else
+        -- If offensive check is disabled, consider it passed
+        offensive_check_passed = true
+    end
+    
+    -- Must pass at least one check (OR logic)
+    if not (defensive_check_passed or offensive_check_passed) then
+        return false
     end
 
     -- if units < menu_elements_concealment_base.min_max_targets:get() then
