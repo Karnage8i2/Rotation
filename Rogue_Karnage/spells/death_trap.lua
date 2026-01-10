@@ -113,22 +113,40 @@ local function logics(entity_list, target_selector_data, best_target)
     local effective_min_enemies = math.max(global_min_enemies, spell_min_hits)
     
     -- Check if there's a high-value target present (bypass minimum enemy count if true)
+    -- Also check if best_target is provided and valid (might be boss/elite even if not counted)
     local high_value_present = boss_units_count > 0 or elite_units_count > 0 or champion_units_count > 0
+    local best_target_is_high_value = false
+    
+    if best_target and best_target:is_valid() then
+        -- Check if best_target is actually a boss/elite by checking distance and rarity
+        local target_rarity = best_target:get_rarity()
+        if target_rarity and (target_rarity == 4 or target_rarity == 5 or target_rarity == 6) then
+            -- 4=elite, 5=champion, 6=boss (approximate values, may vary)
+            best_target_is_high_value = true
+            high_value_present = true
+            if debug_enabled then
+                console.print("Death Trap: best_target is high-value (rarity: " .. tostring(target_rarity) .. ")")
+            end
+        end
+    end
+    
     if high_value_present and debug_enabled then
         console.print("Death Trap: High-value target detected - bypassing minimum enemy count requirement")
     end
 
     -- Check if we should prefer casting on boss position
     local prefer_boss = menu_elements.prefer_boss_position:get()
-    if prefer_boss and high_value_present and best_target and best_target:is_valid() then
+    if prefer_boss and best_target and best_target:is_valid() then
         local boss_pos = best_target:get_position()
         local dist_sqr = player_position:squared_dist_to_ignore_z(boss_pos)
         if dist_sqr <= (spell_range * spell_range) then
-            if debug_enabled then console.print("Death Trap: Prefer Boss Position enabled - casting directly on high-value target") end
+            -- When prefer_boss is enabled, cast on best_target regardless of whether it's classified as high-value
+            -- This ensures we hit the current target (which is usually the most important one)
+            if debug_enabled then console.print("Death Trap: Prefer Boss Position enabled - casting directly on best target") end
             if cast_spell and cast_spell.position and cast_spell.position(death_trap_spell_id, boss_pos, 0.40) then
                 next_time_allowed_cast = current_time + 0.01
                 _G.last_death_trap_time = current_time
-                console.print("Rouge Plugin: Casted Death Trap directly on boss/elite position")
+                console.print("Rouge Plugin: Casted Death Trap directly on best target position")
                 return true
             end
         end
