@@ -1692,18 +1692,12 @@ safe_on_update(function()
                 return
             end
         elseif spell_name == "concealment" then
-            -- For Death Trap build (profile 0), concealment is handled specially before death trap
-            -- For other builds, cast normally
-            if profile_index_rotation_meta ~= 0 then
-                result = spell.logics()
-                if result then
-                    cast_end_time = current_time + 0.3
-                    console.print("Concealment: Active")
-                    return
-                end
-            else
-                -- Skip concealment in Death Trap build - it's cast before death trap
-                goto continue
+            -- Cast concealment normally for all builds
+            result = spell.logics()
+            if result then
+                cast_end_time = current_time + 0.3
+                console.print("Concealment: Active")
+                return
             end
         elseif spell_name == "shadow_imbuement" or 
                spell_name == "poison_imbuement" or 
