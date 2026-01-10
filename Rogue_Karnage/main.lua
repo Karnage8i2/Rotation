@@ -89,6 +89,7 @@ local function get_active_spell_priority(player_position)
         if use_aoe_priority then
             -- AOE: Quick channel on packs
             return {
+                "dark_shroud",       -- defensive layer
                 "poison_imbuement",  -- amplify Dance
                 "dance_of_knives",   -- primary AOE channel
                 "poison_trap",       -- area damage
@@ -100,7 +101,8 @@ local function get_active_spell_priority(player_position)
         else
             -- Boss: Longer channels with defensive setup
             return {
-                "concealment",       -- defensive + damage buff
+                "dark_shroud",       -- defensive layer
+                "concealment",       -- stealth + damage buff
                 "poison_imbuement",  -- amplify Dance
                 "dance_of_knives",   -- primary damage
                 "poison_trap",       -- sustained damage
@@ -115,6 +117,7 @@ local function get_active_spell_priority(player_position)
         if use_aoe_priority then
             -- AOE: Barrage spam with setup
             return {
+                "dark_shroud",       -- defensive layer
                 "caltrop",           -- vulnerable
                 "poison_trap",       -- area damage
                 "shadow_imbuement",  -- damage boost
@@ -144,6 +147,7 @@ local function get_active_spell_priority(player_position)
         if use_aoe_priority then
             -- AOE: Flurry spam with imbuement
             return {
+                "dark_shroud",       -- defensive layer
                 "shadow_imbuement",  -- damage multiplier
                 "poison_trap",       -- area damage
                 "flurry",            -- primary spam
@@ -171,6 +175,7 @@ local function get_active_spell_priority(player_position)
         if use_aoe_priority then
             -- AOE: Rain spam for pack clear
             return {
+                "dark_shroud",       -- defensive layer
                 "caltrop",           -- vulnerable
                 "shadow_imbuement",  -- damage boost
                 "rain_of_arrows",    -- primary AOE
@@ -200,6 +205,7 @@ local function get_active_spell_priority(player_position)
         if use_aoe_priority then
             -- AOE: Quick poison setup and TB spam
             return {
+                "dark_shroud",        -- defensive layer
                 "poison_imbuement",   -- poison synergy
                 "death_trap",         -- burst setup
                 "poison_trap",        -- layered poison
@@ -212,6 +218,7 @@ local function get_active_spell_priority(player_position)
         else
             -- Boss: Controlled poison build-up
             return {
+                "dark_shroud",        -- defensive layer
                 "concealment",        -- stealth opener
                 "poison_imbuement",   -- poison synergy
                 "shadow_imbuement",   -- shadow support
