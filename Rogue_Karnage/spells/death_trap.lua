@@ -83,6 +83,23 @@ local function logics(entity_list, target_selector_data, best_target)
         return false
     end
     
+    -- Check for Prefer Boss Position early - allows casting even with empty entity list
+    local prefer_boss = menu_elements.prefer_boss_position:get()
+    if prefer_boss and best_target and best_target:is_valid() then
+        local spell_range = menu_elements.spell_range:get()
+        local boss_pos = best_target:get_position()
+        local dist_sqr = player_position:squared_dist_to_ignore_z(boss_pos)
+        if dist_sqr <= (spell_range * spell_range) then
+            if debug_enabled then console.print("Death Trap: Prefer Boss Position enabled - casting directly on best target (early check)") end
+            if cast_spell and cast_spell.position and cast_spell.position(death_trap_spell_id, boss_pos, 0.40) then
+                next_time_allowed_cast = current_time + 0.01
+                _G.last_death_trap_time = current_time
+                console.print("Rouge Plugin: Casted Death Trap directly on best target position")
+                return true
+            end
+        end
+    end
+    
     -- Check if we have a valid entity list
     if type(entity_list) ~= "table" or #entity_list == 0 then
         if debug_enabled then console.print("Death Trap: No entities in list") end
