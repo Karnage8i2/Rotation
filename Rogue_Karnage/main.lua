@@ -1724,44 +1724,6 @@ safe_on_update(function()
                spell_name == "death_trap" or
                spell_name == "rain_of_arrows" then
             -- Area control and trap spells that need full target list
-            
-            -- Special handling for Death Trap build: Cast Concealment right before Death Trap
-            if spell_name == "death_trap" and profile_index_rotation_meta == 0 then
-                local concealment_spell = spells["concealment"]
-                if concealment_spell and concealment_spell.logics then
-                    local last_concealment = _G.last_concealment_time or 0
-                    local time_since_concealment = current_time - last_concealment
-                    
-                    -- Cast concealment if it's been more than 3 seconds since last cast
-                    -- This ensures concealment buff is active when death trap is about to cast
-                    if (concealment_spell.menu_elements and concealment_spell.menu_elements.main_boolean:get()) then
-                        if time_since_concealment > 3.0 then
-                            -- Temporarily disable defensive/offensive checks for Death Trap burst
-                            local old_defensive = concealment_spell.menu_elements.as_defensive:get()
-                            local old_offensive = concealment_spell.menu_elements.apply_vulnerable:get()
-                            
-                            -- Disable the checks temporarily
-                            concealment_spell.menu_elements.as_defensive.value = false
-                            concealment_spell.menu_elements.apply_vulnerable.value = false
-                            
-                            if concealment_spell.logics() then
-                                cast_end_time = current_time + 0.3
-                                console.print("Concealment: Pre-Death Trap burst setup")
-                                
-                                -- Restore original settings
-                                concealment_spell.menu_elements.as_defensive.value = old_defensive
-                                concealment_spell.menu_elements.apply_vulnerable.value = old_offensive
-                                return
-                            end
-                            
-                            -- Restore original settings even if cast failed
-                            concealment_spell.menu_elements.as_defensive.value = old_defensive
-                            concealment_spell.menu_elements.apply_vulnerable.value = old_offensive
-                        end
-                    end
-                end
-            end
-            
             result = spell.logics(target_list, target_selector_data_all, best_target)
             if result then
                 cast_end_time = current_time + 0.3
