@@ -130,11 +130,9 @@ local function logics(entity_list, target_selector_data, best_target)
         end
     end
     
-    -- Check if we have a valid entity list
-    if type(entity_list) ~= "table" or #entity_list == 0 then
-        if debug_enabled then console.print("Death Trap: No entities in list") end
-        return false
-    end
+    -- Note: We don't immediately fail if entity_list is empty, as we can still detect enemies
+    -- using my_utility.enemy_count_in_range() below. The entity_list is used for AoE optimization
+    -- but we can work without it for simple scenarios.
     
     -- Get spell parameters
     local spell_range = menu_elements.spell_range:get()
@@ -204,8 +202,17 @@ local function logics(entity_list, target_selector_data, best_target)
         return false
     end
 
-    local area_data = my_target_selector.get_most_hits_circular(player_position, spell_range, spell_radius)
-    if not area_data.main_target then
+    -- Get AOE data only if we have entity_list, otherwise try direct targeting
+    local area_data = nil
+    local has_entity_list = (type(entity_list) == "table" and #entity_list > 0)
+    
+    if has_entity_list then
+        area_data = my_target_selector.get_most_hits_circular(player_position, spell_range, spell_radius)
+    else
+        if debug_enabled then console.print("Death Trap: No entity_list, using direct enemy detection") end
+    end
+    
+    if not has_entity_list or not area_data or not area_data.main_target then
         if high_value_present and best_target and best_target:is_valid() then
             local boss_pos = best_target:get_position()
             local dist_sqr = player_position:squared_dist_to_ignore_z(boss_pos)
@@ -223,6 +230,12 @@ local function logics(entity_list, target_selector_data, best_target)
         return false
     end
 
+    -- Only proceed with detailed casting if we have area_data from entity_list
+    if not has_entity_list or not area_data then
+        if debug_enabled then console.print("Death Trap: No area data available, cannot cast") end
+        return false
+    end
+    
     -- Get best cast position
     local cast_position = area_data.main_target:get_position()
     local best_cast_data = my_utility.get_best_point(cast_position, spell_radius, area_data.victim_list)
