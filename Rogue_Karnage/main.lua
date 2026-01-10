@@ -1699,8 +1699,10 @@ safe_on_update(function()
             end
         elseif spell_name == "caltrop" or
                spell_name == "smoke_grenade" or
-               spell_name == "poison_trap" then
-            -- Meta build: Area control spells for damage multipliers on elites/bosses
+               spell_name == "poison_trap" or
+               spell_name == "death_trap" or
+               spell_name == "rain_of_arrows" then
+            -- Area control and trap spells that need full target list
             result = spell.logics(target_list, target_selector_data_all, best_target)
             if result then
                 cast_end_time = current_time + 0.3
@@ -1713,6 +1715,11 @@ safe_on_update(function()
                 elseif spell_name == "poison_trap" then
                     _G.last_poison_trap_time = current_time
                     console.print("Poison Trap: Deployed")
+                elseif spell_name == "death_trap" then
+                    _G.last_death_trap_time = current_time
+                    console.print("Death Trap: Deployed")
+                elseif spell_name == "rain_of_arrows" then
+                    console.print("Rain of Arrows: Deployed")
                 end
                 return
             end
