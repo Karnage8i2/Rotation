@@ -28,6 +28,7 @@ local function get_active_spell_priority()
             "shadow_imbuement", -- prep Death Trap and traps with imbuement
             "concealment",   -- stealth burst before dropping Death Trap
             "death_trap",    -- main nuke on packs/bosses
+            "smoke_grenade", -- CC + damage amp for Death Trap setup
             "poison_trap",   -- extra AoE damage/control around Death Trap
             "shadow_step",   -- engage / close gaps on priority targets
             "dash",          -- generic movement / repositioning
@@ -611,6 +612,7 @@ safe_on_render_menu(function()
     table.insert(equipped_spells, spell_data.dance_of_knives.spell_id) -- force dance_of_knives as equipped
     table.insert(equipped_spells, spell_data.poison_imbuement.spell_id) -- force poison_imbuement as equipped
     table.insert(equipped_spells, spell_data.poison_trap.spell_id) -- force poison_trap as equipped
+    table.insert(equipped_spells, spell_data.smoke_grenade.spell_id) -- force smoke_grenade as equipped
 
     -- Create a lookup table for equipped spells
     local equipped_lookup = {}
