@@ -6,8 +6,9 @@ local menu_elements =
     main_tree           = tree_node:new(0),
     -- 0 = Melee, 1 = Ranged
     mode                = combo_box:new(0, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "mode_melee_range")),
-    -- 0 = Penetrating Shot, 1 = Death Trap PIT (over Heartseeker [Starter] slot), 2 = Flurry Shadow Imb PIT, 3 = Heartseeker PIT Hybrid, 4 = Dance of Knives PIT, 5 = TB Leveling
-    profile             = combo_box:new(4, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "build_profile")),
+    -- 0 = Death Trap, 1 = Dance of Knives, 2 = Heartseeker, 3 = Flurry, 4 = Rain of Arrows, 5 = Poison Twisting Blades
+    profile             = combo_box:new(0, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "build_profile")),
+    rotation_mode       = combo_box:new(0, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "rotation_mode")),
     evade_cooldown      = slider_int:new(0, 20, 6, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "evade_cooldown")),
     boss_mode           = checkbox:new(false, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "boss_mode")),
     slow_penetrating_shot = checkbox:new(false, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "slow_penetrating_shot")),
@@ -61,7 +62,6 @@ local menu_elements =
     position_optimization = checkbox:new(false, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "position_optimization")),
     enhanced_debug_viz = checkbox:new(false, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "enhanced_debug_viz")),
     disable_auto_movement = checkbox:new(false, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "disable_auto_movement")),
-    hold_position_combat = checkbox:new(false, get_hash((my_utility and my_utility.plugin_label or "death_trap_rogue_") .. "hold_position_combat")),
     
     -- Enhanced targeting options
     enhanced_targeting_tree = tree_node:new(2),

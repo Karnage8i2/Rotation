@@ -19,6 +19,7 @@ local menu_elements =
     min_percentage_hits   = slider_float:new(0.1, 1.0, 0.55, get_hash(my_utility.plugin_label .. "min_percentage_hits_trap_base")),
     spell_range          = slider_float:new(1.0, 15.0, 3.50, get_hash(my_utility.plugin_label .. "death_trap_spell_range_2")),
     spell_radius         = slider_float:new(0.50, 10.0, 5.50, get_hash(my_utility.plugin_label .. "death_trap_spell_radius_2")),
+    prefer_boss_position = checkbox:new(true, get_hash(my_utility.plugin_label .. "death_trap_prefer_boss_position")),
     debug_enabled        = checkbox:new(false, get_hash(my_utility.plugin_label .. "debug_enabled_death_trap")),
 }
 
@@ -41,6 +42,7 @@ local function render_menu()
 
         menu_elements.spell_range:render("Spell Range", "", 1)
         menu_elements.spell_radius:render("Spell Radius", "", 1)
+        menu_elements.prefer_boss_position:render("Prefer Boss Position", "Cast Death Trap directly on boss/elite when present (guaranteed hit)")
         menu_elements.debug_enabled:render("Enable Debug", "Show debug information")
 
         menu_elements.tree_tab:pop();
@@ -52,6 +54,14 @@ local next_time_allowed_cast = 0.01;
 
 local function logics(entity_list, target_selector_data, best_target)
     local debug_enabled = menu_elements.debug_enabled:get()
+    
+    -- Always log when function is called to debug boss fights
+    if debug_enabled then
+        local has_best = best_target and best_target:is_valid()
+        local list_count = (type(entity_list) == "table") and #entity_list or 0
+        console.print(string.format("Death Trap: Called with best_target=%s, entity_list count=%d", 
+            tostring(has_best), list_count))
+    end
     
     -- Basic checks
     if not menu_elements.main_boolean:get() then
@@ -72,6 +82,10 @@ local function logics(entity_list, target_selector_data, best_target)
     
     -- Get player position
     local player_position = get_player_position()
+    if not player_position then
+        if debug_enabled then console.print("Death Trap: No player position") end
+        return false
+    end
     
     -- Handle keybind mode
     local keybind_used = menu_elements.keybind:get_state()
@@ -81,11 +95,44 @@ local function logics(entity_list, target_selector_data, best_target)
         return false
     end
     
-    -- Check if we have a valid entity list
-    if type(entity_list) ~= "table" or #entity_list == 0 then
-        if debug_enabled then console.print("Death Trap: No entities in list") end
-        return false
+    -- Check for Prefer Boss Position FIRST - allows casting even with empty entity list
+    local prefer_boss = menu_elements.prefer_boss_position:get()
+    if debug_enabled then
+        console.print(string.format("Death Trap: Prefer boss=%s, best_target valid=%s", 
+            tostring(prefer_boss), tostring(best_target and best_target:is_valid())))
     end
+    
+    if prefer_boss and best_target and best_target:is_valid() then
+        local spell_range = menu_elements.spell_range:get()
+        local boss_pos = best_target:get_position()
+        if boss_pos then
+            local dist_sqr = player_position:squared_dist_to_ignore_z(boss_pos)
+            local dist = math.sqrt(dist_sqr)
+            if debug_enabled then
+                console.print(string.format("Death Trap: Distance to best_target: %.2f (range: %.2f)", dist, spell_range))
+            end
+            
+            if dist_sqr <= (spell_range * spell_range) then
+                if debug_enabled then console.print("Death Trap: Prefer Boss Position - attempting cast on best_target") end
+                if cast_spell and cast_spell.position and cast_spell.position(death_trap_spell_id, boss_pos, 0.40) then
+                    next_time_allowed_cast = current_time + 0.01
+                    _G.last_death_trap_time = current_time
+                    console.print("Rouge Plugin: Casted Death Trap directly on best_target (Prefer Boss Position)")
+                    return true
+                else
+                    if debug_enabled then console.print("Death Trap: Cast failed on best_target position") end
+                end
+            else
+                if debug_enabled then console.print("Death Trap: best_target out of range") end
+            end
+        else
+            if debug_enabled then console.print("Death Trap: best_target has no position") end
+        end
+    end
+    
+    -- Note: We don't immediately fail if entity_list is empty, as we can still detect enemies
+    -- using my_utility.enemy_count_in_range() below. The entity_list is used for AoE optimization
+    -- but we can work without it for simple scenarios.
     
     -- Get spell parameters
     local spell_range = menu_elements.spell_range:get()
@@ -111,7 +158,23 @@ local function logics(entity_list, target_selector_data, best_target)
     local effective_min_enemies = math.max(global_min_enemies, spell_min_hits)
     
     -- Check if there's a high-value target present (bypass minimum enemy count if true)
+    -- Also check if best_target is provided and valid (might be boss/elite even if not counted)
     local high_value_present = boss_units_count > 0 or elite_units_count > 0 or champion_units_count > 0
+    local best_target_is_high_value = false
+    
+    if best_target and best_target:is_valid() then
+        -- Check if best_target is actually a boss/elite by checking distance and rarity
+        local target_rarity = best_target:get_rarity()
+        if target_rarity and (target_rarity == 4 or target_rarity == 5 or target_rarity == 6) then
+            -- 4=elite, 5=champion, 6=boss (approximate values, may vary)
+            best_target_is_high_value = true
+            high_value_present = true
+            if debug_enabled then
+                console.print("Death Trap: best_target is high-value (rarity: " .. tostring(target_rarity) .. ")")
+            end
+        end
+    end
+    
     if high_value_present and debug_enabled then
         console.print("Death Trap: High-value target detected - bypassing minimum enemy count requirement")
     end
@@ -139,8 +202,17 @@ local function logics(entity_list, target_selector_data, best_target)
         return false
     end
 
-    local area_data = my_target_selector.get_most_hits_circular(player_position, spell_range, spell_radius)
-    if not area_data.main_target then
+    -- Get AOE data only if we have entity_list, otherwise try direct targeting
+    local area_data = nil
+    local has_entity_list = (type(entity_list) == "table" and #entity_list > 0)
+    
+    if has_entity_list then
+        area_data = my_target_selector.get_most_hits_circular(player_position, spell_range, spell_radius)
+    else
+        if debug_enabled then console.print("Death Trap: No entity_list, using direct enemy detection") end
+    end
+    
+    if not has_entity_list or not area_data or not area_data.main_target then
         if high_value_present and best_target and best_target:is_valid() then
             local boss_pos = best_target:get_position()
             local dist_sqr = player_position:squared_dist_to_ignore_z(boss_pos)
@@ -158,6 +230,12 @@ local function logics(entity_list, target_selector_data, best_target)
         return false
     end
 
+    -- Only proceed with detailed casting if we have area_data from entity_list
+    if not has_entity_list or not area_data then
+        if debug_enabled then console.print("Death Trap: No area data available, cannot cast") end
+        return false
+    end
+    
     -- Get best cast position
     local cast_position = area_data.main_target:get_position()
     local best_cast_data = my_utility.get_best_point(cast_position, spell_radius, area_data.victim_list)

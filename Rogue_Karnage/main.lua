@@ -15,23 +15,67 @@ local function safe_get_menu_element(element, fallback)
 end
 
 -- Returns the active spell priority list based on selected profile
-local function get_active_spell_priority()
-    -- Profile: 0 = Penetrating Shot (default), 1 = Death Trap PIT (replaces Heartseeker [Starter] slot), 2 = Flurry Shadow Imbuement Pit, 3 = Heartseeker Pit Hybrid
+-- With rotation mode support for Death Trap (AOE vs Boss optimization)
+local function get_active_spell_priority(player_position)
+    -- Profile: 0 = Penetrating Shot (default), 1 = Death Trap (S11 Mobalytics), 2 = Flurry Shadow Imbuement Pit, 3 = Heartseeker Pit Hybrid
     local profile_index = safe_get_menu_element(menu.menu_elements.profile, 0)
+    local rotation_mode = safe_get_menu_element(menu.menu_elements.rotation_mode, 0) -- 0=Auto, 1=AOE Priority, 2=Boss Priority
 
     if profile_index == 1 then
-        -- Death Trap PIT profile (mapped onto the "Heartseeker [Starter]" UI slot)
-        -- User bar: 1=poison_trap, 2=concealment, 3=dark_shroud, 4=dash, LM=death_trap, RM=shadow_step
-        -- Priority: maintain Dark Shroud -> Shadow Imbuement + Concealment + Death Trap burst -> Poison Trap AoE -> Shadow Step/Dash movement.
-        return {
-            "dark_shroud",   -- keep DR up before going in
-            "shadow_imbuement", -- prep Death Trap and traps with imbuement
-            "concealment",   -- stealth burst before dropping Death Trap
-            "death_trap",    -- main nuke on packs/bosses
-            "poison_trap",   -- extra AoE damage/control around Death Trap
-            "shadow_step",   -- engage / close gaps on priority targets
-            "dash",          -- generic movement / repositioning
-        }
+        -- S11 Death Trap Build (Mobalytics: https://mobalytics.gg/diablo-4/builds/rogue-death-trap)
+        -- Determine rotation type: AOE for trash, Boss for single target
+        local use_boss_rotation = false
+        
+        if rotation_mode == 2 then
+            -- Boss Priority forced
+            use_boss_rotation = true
+        elseif rotation_mode == 1 then
+            -- AOE Priority forced
+            use_boss_rotation = false
+        else
+            -- Auto: detect based on enemy composition
+            if player_position then
+                local all_units, normal_units, elite_units, champion_units, boss_units = 
+                    my_utility.enemy_count_in_range(15.0, player_position)
+                
+                -- Use Boss rotation if: boss present, champion present, or few enemies (elite focused)
+                if (boss_units and boss_units > 0) or 
+                   (champion_units and champion_units > 0) or
+                   (elite_units and elite_units > 0 and all_units <= 3) then
+                    use_boss_rotation = true
+                end
+            end
+        end
+        
+        if use_boss_rotation then
+            -- Boss Rotation: Defensive setup + burst combo
+            return {
+                "dark_shroud",       -- defensive layer
+                "concealment",       -- stealth + vulnerable
+                "shadow_imbuement",  -- amplify Death Trap
+                "death_trap",        -- primary nuke (smart boss targeting)
+                "poison_trap",       -- sustained damage
+                "caltrop",           -- vulnerable if needed
+                "shadow_step",       -- mobility
+                "dash",              -- repositioning
+                "blade_shift",       -- basic attack for energy
+                "puncture",          -- alternative basic
+            }
+        else
+            -- AOE Rotation: Fast clear for trash packs
+            return {
+                "concealment",       -- quick stealth
+                "shadow_imbuement",  -- amplify traps
+                "death_trap",        -- AOE nuke
+                "poison_trap",       -- area damage
+                "caltrop",           -- control
+                "dark_shroud",       -- defense when needed
+                "shadow_step",       -- mobility
+                "dash",              -- quick repositioning
+                "blade_shift",       -- basic attack for energy
+                "puncture",          -- alternative basic
+            }
+        end
     elseif profile_index == 2 then
         -- Heartseeker-standard-PIT profile (balanced boss + trash)
         -- Priority: setup/CC -> imbuement -> Shadow Clone (boss/elite burst) -> Heartseeker core ST -> Flurry secondary -> mobility -> fallback
@@ -507,8 +551,15 @@ safe_on_render_menu(function()
     local options = {"Melee", "Ranged"}
     menu.menu_elements.mode:render("Mode", options, "")
 
-    local profile_options = {"Penetrating Shot", "Death Trap", "Heartseeker-standard-PIT", "Heartseeker Pit Hybrid", "Dance of Knives PIT", "TB Leveling"}
+    local profile_options = {"Penetrating Shot", "Death Trap (S11)", "Heartseeker-standard-PIT", "Heartseeker Pit Hybrid", "Dance of Knives PIT", "TB Leveling"}
     menu.menu_elements.profile:render("Profile", profile_options, "")
+    
+    -- Rotation Mode (for profiles that support it, like Death Trap)
+    if current_profile_index == 1 then
+        local rotation_options = {"Auto (Smart Detection)", "AOE Priority", "Boss Priority"}
+        menu.menu_elements.rotation_mode:render("Rotation Mode", rotation_options, "Auto: Detects enemy composition | AOE: Optimized for trash | Boss: Optimized for single target")
+    end
+    
     menu.menu_elements.evade_cooldown:render("Evade Cooldown", "")
 
     -- Only show Boss Mode and Slow Penetrating Shot options for the Penetrating Shot profile (index 0)
@@ -1386,7 +1437,8 @@ safe_on_update(function()
         end
         
         -- Spam all other damage spells off cooldown
-        local active_spell_priority = get_active_spell_priority()
+        local player_pos = safe_get_player_position()
+        local active_spell_priority = get_active_spell_priority(player_pos)
         for _, spell_name in ipairs(active_spell_priority) do
             if spell_name ~= "penetrating_shot" and spell_name ~= "smoke_grenade" and spell_name ~= "poison_trap" and spell_name ~= "caltrop" then
                 local spell = spells[spell_name]
@@ -1758,7 +1810,8 @@ safe_on_update(function()
         end
     end
 
-    local active_spell_priority = get_active_spell_priority()
+    local player_position = safe_get_player_position()
+    local active_spell_priority = get_active_spell_priority(player_position)
     local profile_index_rotation_meta = safe_get_menu_element(menu.menu_elements.profile, 0)
     local is_dance_of_knives_profile = (profile_index_rotation_meta == 4)
     local is_dance_channeling = false

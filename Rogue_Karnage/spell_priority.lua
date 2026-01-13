@@ -1,27 +1,19 @@
 -- Spell priority configuration for Rogue class
--- UPDATED: Meta build rotation from Mobalytics Penetrating Shot guide
--- 1. Caltrops (damage multiplier on elites/bosses)
--- 2. Smoke Grenade (more damage on elites/bosses)
--- 3. Poison Trap (Pit Push variant)
--- 4. Shadow Imbuement (Pit Push variant)
--- 5. Shadow Clone (every 5 seconds - doubles damage + Unstoppable)
--- 6. Penetrating Shot (primary damage dealer - spam aggressively)
--- 7. Dash (mobility)
--- 8. Shadow Step (mobility)
--- 9. Heartseeker
--- 10. Flurry
+-- S11 Build: Death Trap (default profile)
+-- AOE Priority: Setup traps -> Imbuement -> Death Trap nuke -> Poison Trap -> Mobility
+-- Boss Priority: Dark Shroud -> Concealment -> Shadow Imbuement -> Death Trap -> Poison Trap -> Dash
 
 local spell_priority = {
-    "heartseeker",
-    "flurry",
-    "caltrop",
-    "smoke_grenade", 
-    "poison_trap",
+    "dark_shroud",
+    "concealment",
     "shadow_imbuement",
-    "shadow_clone",
-    "penetrating_shot",
+    "death_trap",
+    "poison_trap",
+    "caltrop",
+    "shadow_step",
     "dash",
-    "shadow_step"
+    "blade_shift",       -- basic skill for energy generation
+    "puncture"           -- alternative basic skill
 }
 
 return spell_priority
